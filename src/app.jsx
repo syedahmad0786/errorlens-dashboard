@@ -23,6 +23,7 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
 
   const crumbs = (() => {
     if (route === 'overview') return ['Overview'];
+    if (route === 'workflows') return ['Monitoring', 'Workflows'];
     if (route === 'events') return ['Monitoring', 'Error feed'];
     if (route === 'event') return ['Monitoring', 'Error feed', openEvent?.id || 'Detail'];
     if (route === 'alerts') return ['Monitoring', 'Alert rules'];
@@ -61,6 +62,7 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
           <div className="main">
             <Topbar crumbs={crumbs}/>
             {route === 'overview'    && <OverviewPage tweaks={tweaksObj} onOpenEvent={goEvent} onNav={setRoute}/>}
+            {route === 'workflows'   && <WorkflowsPage/>}
             {route === 'events'      && <FeedPage onOpenEvent={goEvent}/>}
             {route === 'event'       && <EventDetailPage event={openEvent || window.EL_DATA.events[0]} onBack={() => setRoute('events')}/>}
             {route === 'alerts'      && <AlertsPage onOpenSheet={() => setSheetOpen(true)}/>}

@@ -7,6 +7,7 @@ const D = new Proxy({}, { get: (_, prop) => _getD()[prop] });
 // ============ Shell: Sidebar + Topbar ============
 const NAV = [
   { id: 'overview', label: 'Overview',     icon: 'home',  group: 'Monitoring' },
+  { id: 'workflows',label: 'Workflows',    icon: 'workflow', group: 'Monitoring' },
   { id: 'events',   label: 'Error feed',   icon: 'feed',  group: 'Monitoring' },
   { id: 'alerts',   label: 'Alert rules',  icon: 'bell',  group: 'Monitoring' },
   { id: 'integrations', label: 'Integrations', icon: 'plug', group: 'Configuration' },
@@ -515,7 +516,7 @@ const EventDetailPage = ({ event, onBack }) => {
           </div>
 
           <div className="card">
-            <div className="card-title" style={{ marginBottom: 12 }}>Similar errors · 7d <span style={{ color: 'var(--text-tertiary)', float: 'right' }}>14</span></div>
+            <div className="card-title" style={{ marginBottom: 12 }}>Similar errors · 7d<span style={{ color: 'var(--text-tertiary)', float: 'right' }}>14</span></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {D.events.filter(e => e.code === event.code && e.id !== event.id).slice(0, 4).map(e => (
                 <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 12 }}>
