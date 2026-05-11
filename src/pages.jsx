@@ -12,11 +12,10 @@ const NAV = [
   { id: 'alerts',   label: 'Alert rules',  icon: 'bell',  group: 'Monitoring' },
   { id: 'integrations', label: 'Integrations', icon: 'plug', group: 'Configuration' },
   { id: 'users',    label: 'Users',        icon: 'users', group: 'Configuration' },
-  { id: 'billing',  label: 'Billing',      icon: 'card',  group: 'Account' },
   { id: 'settings', label: 'Settings',     icon: 'cog',   group: 'Account' },
 ];
 
-const Sidebar = ({ route, onNav, sidebar, onToggleSidebar }) => {
+const Sidebar = ({ route, onNav, sidebar, onToggleSidebar , user, onLogout}) => {
   const groups = ['Monitoring', 'Configuration', 'Account'];
   return (
     <aside className="sidebar">
@@ -259,6 +258,29 @@ const FeedPage = ({ onOpenEvent }) => {
   const [search, setSearch] = useState('');
   const [sev, setSev] = useState({ critical: true, error: true, warn: true, info: true });
   const [status, setStatus] = useState({ open: true, ack: true, resolved: true });
+  // Load persisted error statuses from Supabase
+  const [errorStatuses, setErrorStatuses] = React.useState({});
+  React.useEffect(() => {
+    if (window.EL_AUTH && window.EL_AUTH.session()) {
+      window.EL_AUTH.getErrorStatuses().then(statuses => {
+        const map = {};
+        statuses.forEach(s => { map[s.error_id] = s.status; });
+        setErrorStatuses(map);
+      }).catch(() => {});
+    }
+  }, []);
+
+
+  // Merge persisted statuses into events
+  const eventsWithStatus = React.useMemo(() => {
+    if (!D || !eventsWithStatus) return [];
+    return eventsWithStatus.map(e => {
+      const persisted = errorStatuses[e.id];
+      return persisted ? { ...e, status: persisted } : e;
+    });
+  }, [D, errorStatuses]);
+
+
   const [activeTab, setActiveTab] = useState('all');
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [expandedEvent, setExpandedEvent] = useState(null);
@@ -268,7 +290,7 @@ const FeedPage = ({ onOpenEvent }) => {
   // Build workflow tabs from live data
   const workflowTabs = useMemo(() => {
     const wfMap = {};
-    D.events.forEach(e => {
+    eventsWithStatus.forEach(e => {
       if (!wfMap[e.workflowId]) {
         wfMap[e.workflowId] = { id: e.workflowId, name: e.workflow, platform: e.platform, count: 0, openCount: 0 };
       }
@@ -280,7 +302,7 @@ const FeedPage = ({ onOpenEvent }) => {
 
   // Filter events by active tab + filters
   const filtered = useMemo(() => {
-    let arr = D.events.filter(e =>
+    let arr = eventsWithStatus.filter(e =>
       sev[e.severity] &&
       status[e.status] &&
       (activeTab === 'all' || e.workflowId === activeTab) &&
@@ -354,7 +376,7 @@ const FeedPage = ({ onOpenEvent }) => {
         <button className={`wf-tab ${activeTab === 'all' ? 'active' : ''}`} onClick={() => switchTab('all')}>
           <Icon name="layers" size={13}/>
           <span>All workflows</span>
-          <span className="wf-tab-count">{D.events.length}</span>
+          <span className="wf-tab-count">{eventsWithStatus.length}</span>
         </button>
         {workflowTabs.map(wf => (
           <button key={wf.id} className={`wf-tab ${activeTab === wf.id ? 'active' : ''}`} onClick={() => switchTab(wf.id)}>
@@ -500,6 +522,37 @@ const FeedPage = ({ onOpenEvent }) => {
 
 // ============ Event Detail ============
 const EventDetailPage = ({ event, onBack }) => {
+  const [evtStatus, setEvtStatus] = React.useState(event ? event.status : 'open');
+  const [updating, setUpdating] = React.useState(false);
+
+  // Load persisted status on mount
+  React.useEffect(() => {
+    if (!event) return;
+    if (window.EL_AUTH && window.EL_AUTH.session()) {
+      window.EL_AUTH.getErrorStatuses().then(statuses => {
+        const found = statuses.find(s => s.error_id === event.id);
+        if (found) setEvtStatus(found.status);
+      }).catch(() => {});
+    }
+  }, [event]);
+
+  const handleStatusChange = async (newStatus) => {
+    if (!window.EL_AUTH || !window.EL_AUTH.session()) {
+      alert('You must be logged in to change error status');
+      return;
+    }
+    setUpdating(true);
+    try {
+      await window.EL_AUTH.setErrorStatus(event.id, newStatus);
+      setEvtStatus(newStatus);
+      // Also update the in-memory event
+      if (event) event.status = newStatus;
+    } catch(err) {
+      alert('Failed to update: ' + err.message);
+    }
+    setUpdating(false);
+  };
+
   if (!event) return null;
   return (
     <div className="content">
@@ -511,7 +564,7 @@ const EventDetailPage = ({ event, onBack }) => {
           <div className="row" style={{ gap: 12, marginBottom: 6 }}>
             <SeverityIcon sev={event.severity} size={14}/>
             <Badge kind={`sev-${event.severity}`}>{event.severity}</Badge>
-            <Badge kind={`status-${event.status}`}>{event.status}</Badge>
+            <Badge kind={`status-${evtStatus}`}>{evtStatus}</Badge>
             <code style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{event.id}</code>
           </div>
           <h1 className="page-title" style={{ fontFamily: 'var(--font-mono)', fontSize: 20, marginTop: 8, fontWeight: 500 }}>
@@ -519,8 +572,12 @@ const EventDetailPage = ({ event, onBack }) => {
           </h1>
         </div>
         <div className="row">
-          <button className="btn btn-ghost">Acknowledge</button>
-          <button className="btn btn-primary">Resolve</button>
+          <button className="btn btn-ghost" disabled={updating || evtStatus === 'acknowledged' || evtStatus === 'resolved'} onClick={() => handleStatusChange('acknowledged')} style={{ opacity: evtStatus !== 'open' ? 0.5 : 1 }}>
+            {evtStatus === 'acknowledged' ? '\u2713 Acknowledged' : updating ? 'Updating...' : 'Acknowledge'}
+          </button>
+          <button className="btn btn-primary" disabled={updating || evtStatus === 'resolved'} onClick={() => handleStatusChange('resolved')} style={{ opacity: evtStatus === 'resolved' ? 0.5 : 1 }}>
+            {evtStatus === 'resolved' ? '\u2713 Resolved' : updating ? 'Updating...' : 'Resolve'}
+          </button>
         </div>
       </div>
 
@@ -590,21 +647,21 @@ const EventDetailPage = ({ event, onBack }) => {
                 </div>
               </div>
               <div className="lifecycle-item">
-                <div className={`lifecycle-dot ${event.status !== 'open' ? 'done' : 'active'}`}>
-                  {event.status !== 'open' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '2'}
+                <div className={`lifecycle-dot ${evtStatus !== 'open' ? 'done' : 'active'}`}>
+                  {evtStatus !== 'open' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '2'}
                 </div>
                 <div>
                   <div className="lifecycle-title">Acknowledged</div>
-                  <div className="lifecycle-meta">{event.status === 'open' ? 'Pending' : (event.assignedTo || 'Marcus Webb') + ' · 8m later'}</div>
+                  <div className="lifecycle-meta">{evtStatus === 'open' ? 'Pending' : (event.assignedTo || 'Marcus Webb') + ' · 8m later'}</div>
                 </div>
               </div>
               <div className="lifecycle-item">
-                <div className={`lifecycle-dot ${event.status === 'resolved' ? 'done' : ''}`}>
-                  {event.status === 'resolved' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '3'}
+                <div className={`lifecycle-dot ${evtStatus === 'resolved' ? 'done' : ''}`}>
+                  {evtStatus === 'resolved' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '3'}
                 </div>
                 <div>
                   <div className="lifecycle-title">Resolved</div>
-                  <div className="lifecycle-meta">{event.status === 'resolved' ? 'Sasha Chen · 2h later' : '—'}</div>
+                  <div className="lifecycle-meta">{evtStatus === 'resolved' ? 'Sasha Chen · 2h later' : '—'}</div>
                 </div>
               </div>
             </div>

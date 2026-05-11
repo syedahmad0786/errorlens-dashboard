@@ -1,4 +1,4 @@
-// ErrorLens — main app
+// ErrorLens — main app (auth-gated)
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "theme": "ma",
   "accent": "gold",
@@ -14,12 +14,40 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
   const [route, setRoute] = React.useState(initialRoute);
   const [openEvent, setOpenEvent] = React.useState(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [authReady, setAuthReady] = React.useState(false);
+  const [user, setUser] = React.useState(null);
+
+  // Initialize auth on mount
+  React.useEffect(() => {
+    window.EL_AUTH.init().then((session) => {
+      if (session) {
+        setUser(window.EL_AUTH.profile());
+      } else {
+        setRoute('login');
+      }
+      setAuthReady(true);
+    }).catch(() => {
+      setRoute('login');
+      setAuthReady(true);
+    });
+  }, []);
 
   const theme = forceTheme || tweaks.theme;
   const accent = tweaks.accent === 'default' ? '' : tweaks.accent;
   const tweaksObj = { ...tweaks, set: (k, v) => setTweak(k, v) };
 
   const goEvent = (e) => { setOpenEvent(e); setRoute('event'); };
+
+  const handleLogin = () => {
+    setUser(window.EL_AUTH.profile());
+    setRoute('overview');
+  };
+
+  const handleLogout = async () => {
+    await window.EL_AUTH.signOut();
+    setUser(null);
+    setRoute('login');
+  };
 
   const crumbs = (() => {
     if (route === 'overview') return ['Overview'];
@@ -29,7 +57,6 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
     if (route === 'alerts') return ['Monitoring', 'Alert rules'];
     if (route === 'integrations') return ['Configuration', 'Integrations'];
     if (route === 'users') return ['Configuration', 'Users'];
-    if (route === 'billing') return ['Account', 'Billing'];
     if (route === 'settings') return ['Account', 'Settings'];
     if (route === 'login') return ['Sign in'];
     return ['Overview'];
@@ -43,10 +70,22 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
     style: { position: 'absolute', inset: 0, overflow: 'hidden' },
   };
 
-  if (route === 'login') {
+  // Show loading while auth initializes
+  if (!authReady) {
+    return (
+      <div {...wrapperProps}>
+        <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg,hsl(224,20%,6%))',flexDirection:'column',gap:16 }}>
+          <div style={{ width:36,height:36,border:'3px solid hsl(224,14%,22%)',borderTopColor:'hsl(217,91%,60%)',borderRadius:'50%',animation:'spin .8s linear infinite' }}/>
+          <div style={{ color:'hsl(224,10%,62%)',fontSize:14 }}>Authenticating...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (route === 'login' || !user) {
     return (
       <>
-        <div {...wrapperProps}><LoginPage onLogin={() => setRoute('overview')}/></div>
+        <div {...wrapperProps}><LoginPage onLogin={handleLogin}/></div>
         <ErrorLensTweaksPanel tweaks={tweaks} setTweak={setTweak}/>
       </>
     );
@@ -58,7 +97,8 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
         <div className="app">
           <Sidebar route={route === 'event' ? 'events' : route} onNav={setRoute}
                    sidebar={tweaks.sidebar}
-                   onToggleSidebar={() => setTweak('sidebar', tweaks.sidebar === 'icon' ? 'full' : 'icon')}/>
+                   onToggleSidebar={() => setTweak('sidebar', tweaks.sidebar === 'icon' ? 'full' : 'icon')}
+                   user={user} onLogout={handleLogout}/>
           <div className="main">
             <Topbar crumbs={crumbs}/>
             {route === 'overview'    && <OverviewPage tweaks={tweaksObj} onOpenEvent={goEvent} onNav={setRoute}/>}
@@ -68,7 +108,6 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
             {route === 'alerts'      && <AlertsPage onOpenSheet={() => setSheetOpen(true)}/>}
             {route === 'integrations'&& <IntegrationsPage/>}
             {route === 'users'       && <UsersPage/>}
-            {route === 'billing'     && <BillingPage/>}
             {route === 'settings'    && <SettingsPage/>}
           </div>
           <AlertSheet open={sheetOpen} onClose={() => setSheetOpen(false)}/>

@@ -1843,6 +1843,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
 <!-- Data layer -->
 <script src="src/api-client.js"></script>
 <script src="src/mock-data.js"></script>
+<script src="src/supabase-auth.js"></script>
 <script src="src/supabase-data.js"></script>
 
 <!-- UI Components -->
@@ -1858,7 +1859,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
 
   function getRouteFromHash() {
     const hash = window.location.hash.replace('#/', '').replace('#', '');
-    const valid = ['overview','events','event','alerts','integrations','users','billing','settings','login','workflows'];
+    const valid = ['overview','events','event','alerts','integrations','users','settings','login','workflows'];
     return valid.includes(hash) ? hash : 'overview';
   }
 
