@@ -38,6 +38,32 @@ const Icon = ({ name, size = 16, className = '', strokeWidth = 1.75 }) => {
     layers:      <><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></>,
     move:        <><path d="M5 9h14M5 15h14M9 5l-4 4 4 4M15 11l4 4-4 4"/></>,
     ext:         <><path d="M14 4h6v6"/><path d="m20 4-9 9"/><path d="M16 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5"/></>,
+    // New icons for severity, status, and UI
+    alertTriangle: <><path d="m12 2 10 18H2z"/><path d="M12 9v4"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/></>,
+    alertOctagon:  <><path d="M7.86 2h8.28L22 7.86v8.28L16.14 22H7.86L2 16.14V7.86z"/><path d="M12 8v4"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/></>,
+    xCircle:       <><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></>,
+    checkCircle:   <><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></>,
+    infoCircle:    <><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></>,
+    shieldAlert:   <><path d="M12 2s8 4 8 10-8 10-8 10-8-4-8-10S12 2 12 2z"/><path d="M12 8v4"/><circle cx="12" cy="15" r="0.5" fill="currentColor"/></>,
+    activity:      <><path d="M3 12h4l3-8 4 16 3-8h4"/></>,
+    zap:           <><path d="m13 2-9 12h7l-1 8 9-12h-7z"/></>,
+    play:          <><polygon points="6,3 20,12 6,21" fill="currentColor" stroke="none"/></>,
+    pause:         <><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></>,
+    refreshCw:     <><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></>,
+    globe:         <><circle cx="12" cy="12" r="9"/><path d="M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18M3 12h18"/></>,
+    server:        <><rect x="3" y="2" width="18" height="6" rx="2"/><rect x="3" y="10" width="18" height="6" rx="2"/><circle cx="7" cy="5" r="1" fill="currentColor"/><circle cx="7" cy="13" r="1" fill="currentColor"/><path d="M3 18h18v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3"/></>,
+    hash:          <><path d="M4 9h16M4 15h16M10 3l-2 18M16 3l-2 18"/></>,
+    terminal:      <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 10 3 2-3 2"/><path d="M13 14h4"/></>,
+    barChart:      <><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="2" width="4" height="18" rx="1"/></>,
+    trendingUp:    <><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></>,
+    shield:        <><path d="M12 2s8 4 8 10-8 10-8 10-8-4-8-10S12 2 12 2z"/></>,
+    link:          <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>,
+    trash:         <><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></>,
+    edit:          <><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></>,
+    save:          <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></>,
+    upload:        <><path d="M12 15V3m0 0l-4 4m4-4l4 4M4 21h16"/></>,
+    calendar:      <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>,
+    thumbsUp:      <><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/><path d="M14 9V5a3 3 0 0 0-6 0v4"/><path d="M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7"/></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -47,52 +73,99 @@ const Icon = ({ name, size = 16, className = '', strokeWidth = 1.75 }) => {
   );
 };
 
-const PlatformIcon = ({ p, size = 18 }) => {
-  const map = { n8n: 'N', zapier: 'Z', make: 'M', custom: 'C' };
+// ErrorLens SVG logo icon
+const ErrorLensLogo = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    <rect width="32" height="32" rx="8" fill="var(--accent, #C8A84E)"/>
+    <g stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none">
+      {/* Lens / magnifying glass */}
+      <circle cx="14" cy="14" r="7"/>
+      <path d="M19 19l5 5"/>
+      {/* Lightning bolt inside lens = error detection */}
+      <path d="M15 10l-3 5h4l-1 4" strokeWidth="1.75"/>
+    </g>
+  </svg>
+);
+
+// Platform icons — proper SVG logos for n8n, Make, Zapier, etc.
+const PlatformIcon = ({ p, size = 20 }) => {
+  const platforms = {
+    n8n: {
+      color: '#EA4B71',
+      bg: 'rgba(234,75,113,0.12)',
+      render: (s) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <circle cx="6" cy="12" r="2.5" stroke="#EA4B71" strokeWidth="1.5" fill="rgba(234,75,113,0.15)"/>
+          <circle cx="18" cy="7" r="2.5" stroke="#EA4B71" strokeWidth="1.5" fill="rgba(234,75,113,0.15)"/>
+          <circle cx="18" cy="17" r="2.5" stroke="#EA4B71" strokeWidth="1.5" fill="rgba(234,75,113,0.15)"/>
+          <path d="M8.5 12l7-4.5M8.5 12l7 4.5" stroke="#EA4B71" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      ),
+    },
+    make: {
+      color: '#6D29D9',
+      bg: 'rgba(109,41,217,0.12)',
+      render: (s) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="#6D29D9" strokeWidth="1.5" fill="rgba(109,41,217,0.08)"/>
+          <circle cx="12" cy="12" r="4" stroke="#6D29D9" strokeWidth="1.5"/>
+          <circle cx="12" cy="12" r="1" fill="#6D29D9"/>
+        </svg>
+      ),
+    },
+    zapier: {
+      color: '#FF4A00',
+      bg: 'rgba(255,74,0,0.12)',
+      render: (s) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2v8l6-6M12 2v8l-6-6M12 22v-8l6 6M12 22v-8l-6 6M2 12h8l-6-6M2 12h8l-6 6M22 12h-8l6-6M22 12h-8l6 6" stroke="#FF4A00" strokeWidth="1.5" strokeLinecap="round"/>
+          <circle cx="12" cy="12" r="3" fill="#FF4A00" opacity="0.2" stroke="#FF4A00" strokeWidth="1"/>
+        </svg>
+      ),
+    },
+    custom: {
+      color: 'var(--text-secondary)',
+      bg: 'var(--surface)',
+      render: (s) => (
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2"/>
+          <path d="m7 10 3 2-3 2"/>
+          <path d="M13 14h4"/>
+        </svg>
+      ),
+    },
+  };
+
+  const pf = platforms[p] || platforms.custom;
   return (
-    <span className={`platform-icon pi-${p}`} style={{ width: size, height: size, fontSize: Math.round(size * 0.55) }}>
-      {map[p] || '?'}
+    <span className={`platform-icon pi-${p}`}
+          style={{ width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                   borderRadius: 6, background: pf.bg, flexShrink: 0 }}>
+      {pf.render(Math.round(size * 0.78))}
     </span>
   );
 };
 
-const SeverityDot = ({ sev, size = 8 }) => {
-  const colors = { critical: 'var(--sev-critical)', error: 'var(--sev-error)', warn: 'var(--sev-warn)', info: 'var(--sev-info)' };
-  return <span className="sev-dot" style={{ width: size, height: size, background: colors[sev] }} />;
-};
-
-const Badge = ({ kind, children }) => <span className={`badge ${kind}`}>{children}</span>;
-
-// tiny sparkline
-const Sparkline = ({ data, color = 'currentColor', height = 36, fill = true }) => {
-  const w = 120;
-  const h = height;
-  const min = Math.min(...data), max = Math.max(...data);
-  const range = max - min || 1;
-  const pts = data.map((v, i) => [i / (data.length - 1) * w, h - ((v - min) / range) * h * 0.85 - 2]);
-  const line = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
-  const area = `${line} L${w},${h} L0,${h} Z`;
+// Severity icons — proper icon + color combos
+const SeverityIcon = ({ sev, size = 16 }) => {
+  const config = {
+    critical: { icon: 'shieldAlert', color: 'var(--sev-critical)', bg: 'rgba(239,68,68,0.12)' },
+    error:    { icon: 'xCircle',     color: 'var(--sev-error)',    bg: 'rgba(245,158,11,0.12)' },
+    warn:     { icon: 'alertTriangle', color: 'var(--sev-warn)',   bg: 'rgba(234,179,8,0.12)' },
+    info:     { icon: 'infoCircle',  color: 'var(--sev-info)',     bg: 'rgba(59,130,246,0.12)' },
+  };
+  const c = config[sev] || config.info;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }}>
-      <defs>
-        <linearGradient id={`spark-${color.replace(/[^a-z]/gi,'')}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.32"/>
-          <stop offset="100%" stopColor={color} stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-      {fill && <path d={area} fill={`url(#spark-${color.replace(/[^a-z]/gi,'')})`} />}
-      <path d={line} stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
+    <span className={`sev-icon sev-icon-${sev}`}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                   width: size + 6, height: size + 6, borderRadius: 6, background: c.bg, flexShrink: 0 }}>
+      <Icon name={c.icon} size={size} className="" strokeWidth={2}/>
+      <style>{`.sev-icon-${sev} svg { color: ${c.color}; }`}</style>
+    </span>
   );
 };
 
-// Stacked area chart for timeline
-const TimelineChart = ({ data, mode = 'area' }) => {
-  const w = 800, h = 240, pad = { l: 36, r: 12, t: 12, b: 28 };
-  const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
-  const sevs = ['info', 'warn', 'error', 'critical'];
-  const colors = { info: 'var(--sev-info)', warn: 'var(--sev-warn)', error: 'var(--sev-error)', critical: 'var(--sev-critical)' };
-  const totals = data.map(d => d.critical + d.error + d.warn + d.info);
+// Backward-arn + d.info);
   const max = Math.max(...totals) * 1.15;
 
   if (mode === 'heatmap') {
@@ -238,7 +311,7 @@ const SeverityBreakdown = ({ counts, mode = 'bar' }) => {
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1, display: 'grid', gap: 8 }}>
           {items.map(it => (
             <li key={it.sev} className="sev-legend-row">
-              <span className="dot" style={{ background: it.color }}/>
+              <SeverityIcon sev={it.sev} size={12}/>
               <span className="name">{it.label}</span>
               <span className="count">{it.n} · {Math.round(it.n/total*100)}%</span>
             </li>
@@ -257,7 +330,7 @@ const SeverityBreakdown = ({ counts, mode = 'bar' }) => {
           const max = Math.max(...data) || 1;
           return (
             <div key={it.sev} className="sm-card">
-              <div className="sm-head"><span className="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: it.color }}/>{it.label}</div>
+              <div className="sm-head"><SeverityIcon sev={it.sev} size={10}/>{it.label}</div>
               <div className="sm-num" style={{ color: it.color }}>{it.n}</div>
               <svg viewBox={`0 0 ${w} 26`} preserveAspectRatio="none">
                 {data.map((v, i) => (
@@ -284,7 +357,7 @@ const SeverityBreakdown = ({ counts, mode = 'bar' }) => {
       <ul className="sev-legend" style={{ listStyle: 'none', padding: 0, margin: '16px 0 0' }}>
         {items.map(it => (
           <li key={it.sev} className="sev-legend-row">
-            <span className="dot" style={{ background: it.color }}/>
+            <SeverityIcon sev={it.sev} size={11}/>
             <span className="name">{it.label}</span>
             <span className="count">{it.n} · {Math.round(it.n/total*100)}%</span>
           </li>
@@ -294,4 +367,4 @@ const SeverityBreakdown = ({ counts, mode = 'bar' }) => {
   );
 };
 
-Object.assign(window, { Icon, PlatformIcon, SeverityDot, Badge, Sparkline, TimelineChart, SeverityBreakdown });
+Object.assign(window, { Icon, ErrorLensLogo, PlatformIcon, SeverityIcon, SeverityDot, StatusIndicator, Badge, Sparkline, TimelineChart, SeverityBreakdown });

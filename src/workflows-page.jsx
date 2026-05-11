@@ -78,9 +78,12 @@ const WorkflowsPage = () => {
         </div>
 
         <div className="seg">
-          {[{v:'all',l:`All (${workflows.length})`},{v:'n8n',l:`n8n (${n8nCount})`},{v:'make',l:`Make (${makeCount})`}].map(m => (
+          {[{v:'all',l:`All (${workflows.length})`, p:null},{v:'n8n',l:`n8n (${n8nCount})`, p:'n8n'},{v:'make',l:`Make (${makeCount})`, p:'make'}].map(m => (
             <button key={m.v} className={platform === (m.v === 'n8n' || m.v === 'make' ? m.v : 'all') ? 'on' : ''}
-                    onClick={() => setPlatform(m.v === 'n8n' || m.v === 'make' ? m.v : 'all')}>{m.l}</button>
+                    onClick={() => setPlatform(m.v === 'n8n' || m.v === 'make' ? m.v : 'all')}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              {m.p && <PlatformIcon p={m.p} size={15}/>}{m.l}
+            </button>
           ))}
         </div>
 
@@ -206,16 +209,17 @@ const WorkflowCard = ({ wf, expanded, onToggle }) => {
   return (
     <div className={`wf-card ${expanded ? 'expanded' : ''}`} onClick={onToggle}>
       <div className="wf-card-head">
-        <div className={`wf-card-icon ${pt}`}>
-          {pt === 'n8n' ? 'n8n' : 'M'}
-        </div>
+        <PlatformIcon p={pt} size={34}/>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="wf-card-title">{wf.name || 'Untitled'}</div>
           <div className="wf-card-meta">
             {pt} · {wf.trigger_type || 'manual'} · {wf.node_count || nodes.length} nodes
           </div>
         </div>
-        <span className={`wf-status-badge ${statusLabel}`}>{statusLabel}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <StatusIndicator status={statusLabel} size={13}/>
+          <span className={`wf-status-badge ${statusLabel}`}>{statusLabel}</span>
+        </span>
       </div>
 
       <div className="wf-stats">

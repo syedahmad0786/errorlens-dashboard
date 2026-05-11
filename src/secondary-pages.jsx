@@ -99,7 +99,11 @@ const AlertSheet = ({ open, onClose }) => {
               <div className="field">
                 <label>Platforms</label>
                 <div className="chip-group">
-                  {['n8n','zapier','make','custom'].map(p => <button key={p} className="chip on">{p}</button>)}
+                  {['n8n','zapier','make','custom'].map(p => (
+                    <button key={p} className="chip on" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <PlatformIcon p={p} size={14}/>{p}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="field">
@@ -191,7 +195,7 @@ const IntegrationsPage = () => {
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.status === 'active' ? 'var(--status-resolved)' : 'var(--sev-critical)' }}/>
+                  <StatusIndicator status={p.status === 'active' ? 'active' : 'error'} size={12}/>
                   {p.status === 'active' ? 'Active' : 'Connection error'}
                 </div>
               </div>
@@ -395,9 +399,7 @@ const LoginPage = ({ onLogin }) => {
     <div className="login-wrap">
       <div className="login-left">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 1 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, var(--accent), var(--accent-hover))', position: 'relative' }}>
-            <span style={{ position: 'absolute', inset: 7, border: '2px solid white', borderRadius: '50%' }}/>
-          </div>
+          <ErrorLensLogo size={32}/>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>ErrorLens</div>
             <div style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>A Modern Amenities product</div>

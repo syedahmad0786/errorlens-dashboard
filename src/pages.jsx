@@ -21,8 +21,7 @@ const Sidebar = ({ route, onNav, sidebar, onToggleSidebar }) => {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <span className="lens"/>
-        <span className="ma-mark"/>
+        <ErrorLensLogo size={28}/>
         <span className="wordmark">
           ErrorLens
           <span className="sub">A Modern Amenities product</span>
@@ -43,7 +42,7 @@ const Sidebar = ({ route, onNav, sidebar, onToggleSidebar }) => {
         </div>
       ))}
       <div className="sidebar-foot">
-        <div className="avatar">SC</div>
+        <div className="avatar">AB</div>
         <div className="meta">
           <div className="org">Modern Amenities</div>
           <div className="plan">Pro plan</div>
@@ -74,7 +73,7 @@ const Topbar = ({ crumbs, onSearch }) => (
     </div>
     <button className="icon-btn" title="Notifications"><Icon name="bell" size={16}/><span className="dot"/></button>
     <button className="icon-btn" title="Help"><Icon name="sparkle" size={16}/></button>
-    <div className="avatar">SC</div>
+    <div className="avatar">AB</div>
   </div>
 );
 
@@ -180,7 +179,7 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
           <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-secondary)', marginTop: 8 }}>
             {['critical','error','warn','info'].map(s => (
               <span key={s} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
-                <SeverityDot sev={s} size={6}/>{s}
+                <SeverityIcon sev={s} size={10}/>{s}
               </span>
             ))}
           </div>
@@ -213,8 +212,8 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
           <div className="feed-list">
             {D.events.slice(0, 6).map(e => (
               <div key={e.id} className="feed-row" onClick={() => onOpenEvent(e)}>
-                <SeverityDot sev={e.severity}/>
-                <PlatformIcon p={e.platform} size={20}/>
+                <SeverityIcon sev={e.severity} size={14}/>
+                <PlatformIcon p={e.platform} size={22}/>
                 <div className="msg" title={e.message}>{e.message}</div>
                 <Badge kind={`status-${e.status}`}>{e.status}</Badge>
                 <span className="ts">{e.timestamp}</span>
@@ -239,6 +238,7 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-primary)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <PlatformIcon p={r.platform} size={18}/>
                     <SeverityDot sev={r.sev} size={6}/>{r.wf}
                   </span>
                   <span className="mono" style={{ color: 'var(--text-tertiary)' }}>{r.n}</span>
@@ -254,72 +254,7 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
     </div>
   );
 };
-
-// ============ Error Feed ============
-const FeedPage = ({ onOpenEvent }) => {
-  const [search, setSearch] = useState('');
-  const [sev, setSev] = useState({ critical: true, error: true, warn: true, info: true });
-  const [plat, setPlat] = useState({ n8n: true, zapier: true, make: true, custom: true });
-  const [status, setStatus] = useState({ open: true, ack: true, resolved: true });
-  const [expanded, setExpanded] = useState(null);
-  const [page, setPage] = useState(1);
-  const pageSize = 12;
-  const [sort, setSort] = useState({ key: 'minutesAgo', dir: 1 });
-
-  const filtered = useMemo(() => {
-    let arr = D.events.filter(e =>
-      sev[e.severity] && plat[e.platform] && status[e.status] &&
-      (!search || e.message.toLowerCase().includes(search.toLowerCase()) || e.workflow.toLowerCase().includes(search.toLowerCase()) || e.code.toLowerCase().includes(search.toLowerCase()))
-    );
-    arr = [...arr].sort((a, b) => {
-      const av = a[sort.key], bv = b[sort.key];
-      if (av < bv) return -1 * sort.dir;
-      if (av > bv) return 1 * sort.dir;
-      return 0;
-    });
-    return arr;
-  }, [search, sev, plat, status, sort]);
-
-  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-
-  const toggleSet = (set, setSet, k) => setSet({ ...set, [k]: !set[k] });
-  const toggleSort = (key) => setSort(s => s.key === key ? { key, dir: -s.dir } : { key, dir: 1 });
-
-  return (
-    <div className="content">
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">Error feed</h1>
-          <div className="page-sub">{filtered.length} events match your filters · across {Object.values(plat).filter(Boolean).length} platforms</div>
-        </div>
-        <div className="row">
-          <button className="btn btn-ghost"><Icon name="download" size={14}/> CSV</button>
-          <button className="btn btn-ghost"><Icon name="download" size={14}/> JSON</button>
-        </div>
-      </div>
-
-      <div className="filter-bar">
-        <div className="search-box">
-          <Icon name="search" className="ico"/>
-          <input placeholder="Search errors by message, workflow, or code…" value={search} onChange={(e)=>setSearch(e.target.value)}/>
-        </div>
-        <div className="chip-group">
-          {['critical','error','warn','info'].map(s => (
-            <button key={s} className={`chip ${sev[s] ? 'on '+(s==='critical'?'crit':s==='error'?'err':s==='warn'?'warn':'info') : ''}`}
-                    onClick={() => toggleSet(sev, setSev, s)}>
-              <span className="dot" style={{ background: `var(--sev-${s})` }}/>{s}
-            </button>
-          ))}
-        </div>
-        <div className="chip-group">
-          {['n8n','zapier','make','custom'].map(p => (
-            <button key={p} className={`chip ${plat[p] ? 'on' : ''}`} onClick={() => toggleSet(plat, setPlat, p)}>{p}</button>
-          ))}
-        </div>
-        <div className="chip-group">
-          {['open','ack','resolved'].map(s => (
-            <button key={s} className={`chip ${status[s] ? 'on' : ''}`} onClick={() => toggleSet(status, setStatus, s)}>{s}</button>
+ lbutton key={s} className={`chip ${status[s] ? 'on' : ''}`} onClick={() => toggleSet(status, setStatus, s)}>{s}</button>
           ))}
         </div>
       </div>
@@ -343,8 +278,8 @@ const FeedPage = ({ onOpenEvent }) => {
                 return (
                   <React.Fragment key={e.id}>
                     <tr className={open ? 'expanded' : ''} onClick={() => setExpanded(open ? null : e.id)}>
-                      <td><SeverityDot sev={e.severity}/></td>
-                      <td><span className="platform-row"><PlatformIcon p={e.platform}/>{e.platform}</span></td>
+                      <td><SeverityIcon sev={e.severity} size={13}/></td>
+                      <td><span className="platform-row"><PlatformIcon p={e.platform} size={20}/>{e.platform}</span></td>
                       <td className="col-wf">{e.workflow}</td>
                       <td className="col-msg">{e.message}</td>
                       <td><Badge kind={`status-${e.status}`}>{e.status}</Badge></td>
@@ -403,6 +338,7 @@ const EventDetailPage = ({ event, onBack }) => {
             <Icon name="chevronL" size={14}/> Back to feed
           </button>
           <div className="row" style={{ gap: 12, marginBottom: 6 }}>
+            <SeverityIcon sev={event.severity} size={14}/>
             <Badge kind={`sev-${event.severity}`}>{event.severity}</Badge>
             <Badge kind={`status-${event.status}`}>{event.status}</Badge>
             <code style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{event.id}</code>
