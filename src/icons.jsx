@@ -165,6 +165,41 @@ const SeverityIcon = ({ sev, size = 16 }) => {
   );
 };
 
+const SeverityDot = ({ sev, size = 8 }) => {
+  const colors = { critical: 'var(--sev-critical)', error: 'var(--sev-error)', warn: 'var(--sev-warn)', info: 'var(--sev-info)' };
+  return <span className="sev-dot" style={{ width: size, height: size, background: colors[sev] }} />;
+};
+
+const StatusIndicator = ({ status, size = 8 }) => {
+  const colors = { active: 'var(--sev-info)', error: 'var(--sev-error)', paused: 'var(--sev-warn)', inactive: 'var(--text-tertiary)' };
+  return <span className="status-dot" style={{ width: size, height: size, borderRadius: '50%', background: colors[status] || colors.inactive, display: 'inline-block' }} />;
+};
+
+const Badge = ({ kind, children }) => <span className={"badge " + (kind||"")}>{children}</span>;
+
+// tiny sparkline
+const Sparkline = ({ data, color = 'currentColor', height = 36, fill = true }) => {
+  const w = 120;
+  const h = height;
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => [i / (data.length - 1) * w, h - ((v - min) / range) * h * 0.85 - 2]);
+  const line = pts.map((p, i) => (i === 0 ? 'M' + p[0] + ',' + p[1] : 'L' + p[0] + ',' + p[1])).join(' ');
+  const area = line + ' L' + w + ',' + h + ' L0,' + h + ' Z';
+  return (
+    <svg viewBox={"0 0 " + w + " " + h} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }}>
+      <defs>
+        <linearGradient id={"spark-" + color.replace(/[^a-z]/gi,'')} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.32"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      {fill && <path d={area} fill={"url(#spark-" + color.replace(/[^a-z]/gi,'') + ")"} />}
+      <path d={line} stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+};
+
 // Stacked area chart for timeline
 const TimelineChart = ({ data, mode = 'area' }) => {
   const w = 800, h = 240, pad = { l: 36, r: 12, t: 12, b: 28 };
