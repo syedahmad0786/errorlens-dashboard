@@ -1767,6 +1767,68 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
   .launcher button:hover { background: rgba(255,255,255,0.08); color: white; }
   .launcher button.on { background: rgba(255,255,2550.12); color: white; }
   .launcher .div { width: 1px; background: rgba(255,255,255,0.1); margin: 4px 4px; }
+
+/* Workflow Tabs */
+.wf-tabs {
+  display: flex; gap: 6px; padding: 0 0 16px 0; overflow-x: auto;
+  scrollbar-width: thin; flex-wrap: nowrap;
+}
+.wf-tab {
+  display: flex; align-items: center; gap: 6px; padding: 7px 14px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-secondary); font-size: 12px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; transition: all .15s;
+}
+.wf-tab:hover { border-color: var(--accent); color: var(--text-primary); }
+.wf-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+.wf-tab-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.wf-tab-count {
+  background: rgba(255,255,255,0.12); padding: 1px 7px; border-radius: 10px;
+  font-size: 11px; font-variant-numeric: tabular-nums;
+}
+.wf-tab.active .wf-tab-count { background: rgba(255,255,255,0.25); }
+.wf-tab-open {
+  font-size: 10px; color: var(--sev-error); font-weight: 600;
+}
+.wf-tab.active .wf-tab-open { color: rgba(255,200,200,0.9); }
+
+/* Grouped Error Rows */
+.group-row { cursor: pointer; }
+.group-row:hover td { background: rgba(var(--accent-rgb, 59,130,246), 0.04); }
+.group-row.expanded td { background: rgba(var(--accent-rgb, 59,130,246), 0.06); border-bottom-color: transparent; }
+.err-msg-wrap { display: flex; align-items: center; gap: 6px; }
+.expand-chevron { color: var(--text-tertiary); flex-shrink: 0; transition: transform .15s; }
+.count-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+  background: rgba(255,255,255,0.06); color: var(--text-secondary);
+}
+.count-badge.warm { background: rgba(234,179,8,0.15); color: var(--sev-warn); }
+.count-badge.hot { background: rgba(239,68,68,0.15); color: var(--sev-error); }
+
+/* Expanded Group Instances */
+.group-instances { padding: 0; }
+.group-header { padding: 10px 16px; background: rgba(var(--accent-rgb, 59,130,246), 0.04); border-bottom: 1px solid var(--border); }
+.group-summary { display: flex; align-items: center; gap: 12px; font-size: 12px; flex-wrap: wrap; }
+.group-code { background: var(--card); padding: 2px 8px; border-radius: 4px; font-size: 11px; color: var(--text-secondary); }
+.group-node { display: flex; align-items: center; gap: 4px; color: var(--accent); font-size: 11px; font-weight: 500; }
+.group-range { color: var(--text-tertiary); font-size: 11px; margin-left: auto; }
+
+.instance-list { max-height: 400px; overflow-y: auto; scrollbar-width: thin; }
+.instance-row { border-bottom: 1px solid var(--border); }
+.instance-row:last-child { border-bottom: none; }
+.instance-main {
+  display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer;
+  font-size: 12px; transition: background .1s;
+}
+.instance-main:hover { background: rgba(255,255,255,0.02); }
+.instance-row.instance-open .instance-main { background: rgba(var(--accent-rgb, 59,130,246), 0.06); }
+.instance-num { color: var(--text-tertiary); font-size: 10px; font-weight: 600; min-width: 24px; }
+.instance-id { color: var(--text-secondary); font-size: 11px; }
+.instance-time { color: var(--text-tertiary); font-size: 11px; font-variant-numeric: tabular-nums; }
+.instance-detail { padding: 0 16px 12px 50px; }
+.btn-xs { height: 22px; font-size: 10px; padding: 0 8px; gap: 4px; }
+
 </style>
 </head>
 <body>
@@ -1826,69 +1888,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
         <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg,hsl(224,20%,6%))',flexDirection:'column',gap:16 }}>
           <div style={{ width:36,height:36,border:'3px solid hsl(224,14%,22%)',borderTopColor:'hsl(217,91%,60%)',borderRadius:'50%',animation:'spin .8s linear infinite' }}/>
           <div style={{ color:'hsl(224,10%,62%)',fontSize:14 }}>Loading live data from Supabase...</div>
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}
-/* ── Workflow Tabs ────────────────────────────── */
-.wf-tabs {
-  display: flex; gap: 6px; padding: 0 0 16px 0; overflow-x: auto;
-  scrollbar-width: thin; flex-wrap: nowrap;
-}
-.wf-tab {
-  display: flex; align-items: center; gap: 6px; padding: 7px 14px;
-  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text-secondary); font-size: 12px; font-weight: 500;
-  cursor: pointer; white-space: nowrap; transition: all .15s;
-}
-.wf-tab:hover { border-color: var(--accent); color: var(--text-primary); }
-.wf-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
-.wf-tab-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
-.wf-tab-count {
-  background: rgba(255,255,255,0.12); padding: 1px 7px; border-radius: 10px;
-  font-size: 11px; font-variant-numeric: tabular-nums;
-}
-.wf-tab.active .wf-tab-count { background: rgba(255,255,255,0.25); }
-.wf-tab-open {
-  font-size: 10px; color: var(--sev-error); font-weight: 600;
-}
-.wf-tab.active .wf-tab-open { color: rgba(255,200,200,0.9); }
-
-/* ── Grouped Error Rows ──────────────────────── */
-.group-row { cursor: pointer; }
-.group-row:hover td { background: rgba(var(--accent-rgb, 59,130,246), 0.04); }
-.group-row.expanded td { background: rgba(var(--accent-rgb, 59,130,246), 0.06); border-bottom-color: transparent; }
-.err-msg-wrap { display: flex; align-items: center; gap: 6px; }
-.expand-chevron { color: var(--text-tertiary); flex-shrink: 0; transition: transform .15s; }
-.count-badge {
-  display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px;
-  font-weight: 600; font-variant-numeric: tabular-nums;
-  background: rgba(255,255,255,0.06); color: var(--text-secondary);
-}
-.count-badge.warm { background: rgba(234,179,8,0.15); color: var(--sev-warn); }
-.count-badge.hot { background: rgba(239,68,68,0.15); color: var(--sev-error); }
-
-/* ── Expanded Group Instances ────────────────── */
-.group-instances { padding: 0; }
-.group-header { padding: 10px 16px; background: rgba(var(--accent-rgb, 59,130,246), 0.04); border-bottom: 1px solid var(--border); }
-.group-summary { display: flex; align-items: center; gap: 12px; font-size: 12px; flex-wrap: wrap; }
-.group-code { background: var(--card); padding: 2px 8px; border-radius: 4px; font-size: 11px; color: var(--text-secondary); }
-.group-node { display: flex; align-items: center; gap: 4px; color: var(--accent); font-size: 11px; font-weight: 500; }
-.group-range { color: var(--text-tertiary); font-size: 11px; margin-left: auto; }
-
-.instance-list { max-height: 400px; overflow-y: auto; scrollbar-width: thin; }
-.instance-row { border-bottom: 1px solid var(--border); }
-.instance-row:last-child { border-bottom: none; }
-.instance-main {
-  display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer;
-  font-size: 12px; transition: background .1s;
-}
-.instance-main:hover { background: rgba(255,255,255,0.02); }
-.instance-row.instance-open .instance-main { background: rgba(var(--accent-rgb, 59,130,246), 0.06); }
-.instance-num { color: var(--text-tertiary); font-size: 10px; font-weight: 600; min-width: 24px; }
-.instance-id { color: var(--text-secondary); font-size: 11px; }
-.instance-time { color: var(--text-tertiary); font-size: 11px; font-variant-numeric: tabular-nums; }
-.instance-detail { padding: 0 16px 12px 50px; }
-.btn-xs { height: 22px; font-size: 10px; padding: 0 8px; gap: 4px; }
-
-</style>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
       );
     }

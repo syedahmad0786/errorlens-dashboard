@@ -165,7 +165,13 @@ const SeverityIcon = ({ sev, size = 16 }) => {
   );
 };
 
-// Backward-arn + d.info);
+// Stacked area chart for timeline
+const TimelineChart = ({ data, mode = 'area' }) => {
+  const w = 800, h = 240, pad = { l: 36, r: 12, t: 12, b: 28 };
+  const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const sevs = ['info', 'warn', 'error', 'critical'];
+  const colors = { info: 'var(--sev-info)', warn: 'var(--sev-warn)', error: 'var(--sev-error)', critical: 'var(--sev-critical)' };
+  const totals = data.map(d => d.critical + d.error + d.warn + d.info);
   const max = Math.max(...totals) * 1.15;
 
   if (mode === 'heatmap') {
