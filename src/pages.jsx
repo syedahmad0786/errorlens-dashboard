@@ -254,55 +254,218 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
     </div>
   );
 };
- lbutton key={s} className={`chip ${status[s] ? 'on' : ''}`} onClick={() => toggleSet(status, setStatus, s)}>{s}</button>
+// ============ Error Feed — Workflow Tabs + Grouped Errors ============
+const FeedPage = ({ onOpenEvent }) => {
+  const [search, setSearch] = useState('');
+  const [sev, setSev] = useState({ critical: true, error: true, warn: true, info: true });
+  const [status, setStatus] = useState({ open: true, ack: true, resolved: true });
+  const [activeTab, setActiveTab] = useState('all');
+  const [expandedGroup, setExpandedGroup] = useState(null);
+  const [expandedEvent, setExpandedEvent] = useState(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
+
+  // Build workflow tabs from live data
+  const workflowTabs = useMemo(() => {
+    const wfMap = {};
+    D.events.forEach(e => {
+      if (!wfMap[e.workflowId]) {
+        wfMap[e.workflowId] = { id: e.workflowId, name: e.workflow, platform: e.platform, count: 0, openCount: 0 };
+      }
+      wfMap[e.workflowId].count++;
+      if (e.status === 'open') wfMap[e.workflowId].openCount++;
+    });
+    return Object.values(wfMap).sort((a, b) => b.count - a.count);
+  }, []);
+
+  // Filter events by active tab + filters
+  const filtered = useMemo(() => {
+    let arr = D.events.filter(e =>
+      sev[e.severity] &&
+      status[e.status] &&
+      (activeTab === 'all' || e.workflowId === activeTab) &&
+      (!search || e.message.toLowerCase().includes(search.toLowerCase()) || e.workflow.toLowerCase().includes(search.toLowerCase()) || e.code.toLowerCase().includes(search.toLowerCase()))
+    );
+    return arr;
+  }, [search, sev, status, activeTab]);
+
+  // Group identical errors (same message + same error code + same workflow)
+  const grouped = useMemo(() => {
+    const gMap = {};
+    filtered.forEach(e => {
+      const key = `${e.workflowId}::${e.message}::${e.code}`;
+      if (!gMap[key]) {
+        gMap[key] = {
+          key,
+          message: e.message,
+          code: e.code,
+          severity: e.severity,
+          workflow: e.workflow,
+          workflowId: e.workflowId,
+          platform: e.platform,
+          status: e.status,
+          latestTime: e.fullTime,
+          latestTimestamp: e.timestamp,
+          minutesAgo: e.minutesAgo,
+          errorNode: e.errorNode,
+          instances: [],
+        };
+      }
+      gMap[key].instances.push(e);
+      // Keep the most recent info
+      if (e.minutesAgo < gMap[key].minutesAgo) {
+        gMap[key].minutesAgo = e.minutesAgo;
+        gMap[key].latestTime = e.fullTime;
+        gMap[key].latestTimestamp = e.timestamp;
+        gMap[key].severity = e.severity;
+      }
+      // If any instance is open, mark group as open
+      if (e.status === 'open') gMap[key].status = 'open';
+    });
+    return Object.values(gMap).sort((a, b) => a.minutesAgo - b.minutesAgo);
+  }, [filtered]);
+
+  const pageGroups = grouped.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.max(1, Math.ceil(grouped.length / pageSize));
+
+  const toggleSet = (set, setSet, k) => setSet({ ...set, [k]: !set[k] });
+
+  // Reset page when tab changes
+  const switchTab = (tab) => { setActiveTab(tab); setPage(1); setExpandedGroup(null); setExpandedEvent(null); };
+
+  const totalFiltered = filtered.length;
+  const totalGrouped = grouped.length;
+
+  return (
+    <div className="content">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Error feed</h1>
+          <div className="page-sub">{totalFiltered} errors in {totalGrouped} groups · {workflowTabs.length} workflows</div>
+        </div>
+        <div className="row">
+          <button className="btn btn-ghost"><Icon name="download" size={14}/> CSV</button>
+          <button className="btn btn-ghost"><Icon name="download" size={14}/> JSON</button>
+        </div>
+      </div>
+
+      {/* Workflow Tabs */}
+      <div className="wf-tabs">
+        <button className={`wf-tab ${activeTab === 'all' ? 'active' : ''}`} onClick={() => switchTab('all')}>
+          <Icon name="layers" size={13}/>
+          <span>All workflows</span>
+          <span className="wf-tab-count">{D.events.length}</span>
+        </button>
+        {workflowTabs.map(wf => (
+          <button key={wf.id} className={`wf-tab ${activeTab === wf.id ? 'active' : ''}`} onClick={() => switchTab(wf.id)}>
+            <PlatformIcon p={wf.platform} size={13}/>
+            <span className="wf-tab-name">{wf.name}</span>
+            <span className="wf-tab-count">{wf.count}</span>
+            {wf.openCount > 0 && <span className="wf-tab-open">{wf.openCount} open</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="filter-bar">
+        <div className="search-box">
+          <Icon name="search" className="ico"/>
+          <input placeholder="Search errors by message or code…" value={search} onChange={(e) => setSearch(e.target.value)}/>
+        </div>
+        <div className="chip-group">
+          {['critical','error','warn','info'].map(s => (
+            <button key={s} className={`chip ${sev[s] ? 'on '+(s==='critical'?'crit':s==='error'?'err':s==='warn'?'warn':'info') : ''}`}
+                    onClick={() => toggleSet(sev, setSev, s)}>
+              <span className="dot" style={{ background: `var(--sev-${s})` }}/>{s}
+            </button>
+          ))}
+        </div>
+        <div className="chip-group">
+          {['open','ack','resolved'].map(s => (
+            <button key={s} className={`chip ${status[s] ? 'on' : ''}`} onClick={() => toggleSet(status, setStatus, s)}>{s}</button>
           ))}
         </div>
       </div>
 
+      {/* Grouped Error List */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflow: 'auto' }}>
           <table className="tbl">
             <thead>
               <tr>
                 <th style={{ width: 36 }}/>
-                <th onClick={() => toggleSort('platform')}>Platform <Icon name="sort" size={10}/></th>
-                <th onClick={() => toggleSort('workflow')}>Workflow <Icon name="sort" size={10}/></th>
+                <th>Platform</th>
+                <th>Workflow</th>
                 <th>Error</th>
+                <th style={{ width: 80 }}>Count</th>
                 <th>Status</th>
-                <th onClick={() => toggleSort('minutesAgo')}>Time {sort.key==='minutesAgo' && <Icon name={sort.dir>0?'chevronD':'chevronU'} size={10}/>}</th>
+                <th>Latest</th>
               </tr>
             </thead>
             <tbody>
-              {pageRows.map(e => {
-                const open = expanded === e.id;
+              {pageGroups.map(g => {
+                const isOpen = expandedGroup === g.key;
+                const count = g.instances.length;
                 return (
-                  <React.Fragment key={e.id}>
-                    <tr className={open ? 'expanded' : ''} onClick={() => setExpanded(open ? null : e.id)}>
-                      <td><SeverityIcon sev={e.severity} size={13}/></td>
-                      <td><span className="platform-row"><PlatformIcon p={e.platform} size={20}/>{e.platform}</span></td>
-                      <td className="col-wf">{e.workflow}</td>
-                      <td className="col-msg">{e.message}</td>
-                      <td><Badge kind={`status-${e.status}`}>{e.status}</Badge></td>
-                      <td style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }} title={e.fullTime}>{e.timestamp}</td>
+                  <React.Fragment key={g.key}>
+                    <tr className={`group-row ${isOpen ? 'expanded' : ''}`} onClick={() => { setExpandedGroup(isOpen ? null : g.key); setExpandedEvent(null); }}>
+                      <td><SeverityDot sev={g.severity}/></td>
+                      <td><span className="platform-row"><PlatformIcon p={g.platform}/>{g.platform}</span></td>
+                      <td className="col-wf">{g.workflow}</td>
+                      <td className="col-msg">
+                        <div className="err-msg-wrap">
+                          <Icon name={isOpen ? 'chevronD' : 'chevronR'} size={12} className="expand-chevron"/>
+                          <span>{g.message}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`count-badge ${count > 10 ? 'hot' : count > 3 ? 'warm' : ''}`}>{count}x</span>
+                      </td>
+                      <td><Badge kind={`status-${g.status}`}>{g.status}</Badge></td>
+                      <td style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }} title={g.latestTime}>{g.latestTimestamp}</td>
                     </tr>
-                    {open && (
+                    {isOpen && (
                       <tr className="expanded-row">
-                        <td colSpan="6">
-                          <div className="expand-pad">
-                            <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
-                              <code style={{ background: 'var(--card)', padding: '3px 8px', borderRadius: 4, fontSize: 11 }}>{e.code}</code>
-                              <code style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{e.execId}</code>
-                              <div className="spacer"/>
-                              <button className="btn btn-primary" onClick={(ev) => { ev.stopPropagation(); onOpenEvent(e); }}>
-                                Open detail <Icon name="ext" size={12}/>
-                              </button>
-                            </div>
-                            <div className="code-block">
-                              <div className="code-head"><span>stack trace · first 3 frames</span></div>
-                              <div className="code-body">
-                                <div className="code-lines">{[1,2,3].map(n => <div key={n}>{n}</div>)}</div>
-                                <div className="code-content">{D.stackTrace.split('\n').slice(0,3).join('\n')}</div>
+                        <td colSpan="7" style={{ padding: 0 }}>
+                          <div className="group-instances">
+                            <div className="group-header">
+                              <div className="group-summary">
+                                <code className="group-code">{g.code}</code>
+                                {g.errorNode && <span className="group-node"><Icon name="bolt" size={11}/> {g.errorNode}</span>}
+                                <span className="group-range">
+                                  {g.instances[g.instances.length - 1].timestamp} — {g.instances[0].timestamp}
+                                </span>
                               </div>
+                            </div>
+                            <div className="instance-list">
+                              {g.instances.map((e, idx) => {
+                                const evOpen = expandedEvent === e.id;
+                                return (
+                                  <div key={e.id} className={`instance-row ${evOpen ? 'instance-open' : ''}`}>
+                                    <div className="instance-main" onClick={(ev) => { ev.stopPropagation(); setExpandedEvent(evOpen ? null : e.id); }}>
+                                      <span className="instance-num">#{idx + 1}</span>
+                                      <SeverityDot sev={e.severity} size={6}/>
+                                      <span className="instance-id mono">{e.execId}</span>
+                                      <Badge kind={`status-${e.status}`} small>{e.status}</Badge>
+                                      <span className="instance-time" title={e.fullTime}>{e.fullTime ? new Date(e.fullTime).toLocaleString() : e.timestamp}</span>
+                                      <div className="spacer"/>
+                                      <button className="btn btn-ghost btn-xs" onClick={(ev) => { ev.stopPropagation(); onOpenEvent(e); }}>
+                                        Detail <Icon name="ext" size={10}/>
+                                      </button>
+                                    </div>
+                                    {evOpen && (
+                                      <div className="instance-detail">
+                                        <div className="code-block" style={{ margin: '8px 0' }}>
+                                          <div className="code-head"><span>Error detail</span></div>
+                                          <div className="code-body">
+                                            <div className="code-content" style={{ padding: '10px 14px' }}>{e.message}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </td>
@@ -311,11 +474,19 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
                   </React.Fragment>
                 );
               })}
+              {pageGroups.length === 0 && (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-tertiary)' }}>
+                    <Icon name="checkCircle" size={24} style={{ marginBottom: 8, opacity: 0.4 }}/>
+                    <div>No errors match your filters</div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
         <div className="pager">
-          <span>Showing {(page-1)*pageSize + 1}–{Math.min(page*pageSize, filtered.length)} of {filtered.length} events</span>
+          <span>Showing {Math.min((page-1)*pageSize + 1, totalGrouped)}–{Math.min(page*pageSize, totalGrouped)} of {totalGrouped} error groups</span>
           <div className="pager-ctrl">
             <button className="btn btn-ghost btn-icon" disabled={page===1} onClick={() => setPage(p => Math.max(1, p-1))}><Icon name="chevronL" size={14}/></button>
             <span style={{ padding: '0 12px', fontSize: 12, color: 'var(--text-secondary)' }}>{page} / {totalPages}</span>
