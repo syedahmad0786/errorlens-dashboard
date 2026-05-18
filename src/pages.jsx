@@ -255,7 +255,7 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
       {/* ── Workflow Uptime Monitor ── */}
       <div style={{ marginTop: 32 }}>
         <h3 style={{ color: 'var(--text)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 18 }}>{I.activity || '↑'}</span> Workflow Uptime Monitor
+          <span style={{ fontSize: 18 }}>{'↑'}</span> Workflow Uptime Monitor
         </h3>
 
         {/* Overall Uptime Cards */}
