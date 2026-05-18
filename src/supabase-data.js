@@ -67,14 +67,12 @@ window.EL_DATA_LOADING = (async () => {
     };
   }).sort((a, b) => a.minutesAgo - b.minutesAgo);
 
-  // Build 24h timeline from daily stats (aggregate by hour from executions if available)
-  // For now, build from daily error counts distributed across synthetic hours
+  // Build 24h timeline from daily stats
   const today = new Date().toISOString().slice(0, 10);
   const todayStats = dailyStats.filter(d => d.stat_date === today);
   const todayErrors = todayStats.reduce((s, d) => s + (d.error_count || 0), 0);
   const todayRuns = todayStats.reduce((s, d) => s + (d.total_runs || 0), 0);
 
-  // Create 24h timeline (synthetic distribution based on total daily errors)
   const timeline = Array.from({ length: 24 }, (_, h) => {
     const weight = Math.max(0.2, Math.sin((h - 6) * Math.PI / 18) * 0.8 + 0.5);
     const base = Math.round((todayErrors / 24) * weight * 3);
@@ -94,32 +92,66 @@ window.EL_DATA_LOADING = (async () => {
     info: events.filter(e => e.severity === 'info').length,
   };
 
-  // Top error execution stack trace (first error with detail)
   const topErr = errors.find(e => e.error_message && e.error_message.length > 30);
   const stackTrace = topErr ? topErr.error_message : 'No stack trace available';
   const rawPayload = { error: topErr || {}, workflow: workflows[0] || {} };
 
-  // Alert rules (keep some defaults since we don't have an alerts table yet)
   const alertRules = [
-    { id: 'ar_1', name: 'Critical errors → Slack #incidents', conditions: 'When severity is CRITICAL on any platform', channels: ['slack', 'email'], cooldown: '15 min', on: true, lastFired: '—' },
-    { id: 'ar_2', name: 'n8n volume spike', conditions: 'When n8n errors exceed 10 in 1 hour', channels: ['slack'], cooldown: '60 min', on: true, lastFired: '—' },
+    { id: 'ar_1', name: 'Critical errors \u2192 Slack #incidents', conditions: 'When severity is CRITICAL on any platform', channels: ['slack', 'email'], cooldown: '15 min', on: true, lastFired: '\u2014' },
+    { id: 'ar_2', name: 'n8n volume spike', conditions: 'When n8n errors exceed 10 in 1 hour', channels: ['slack'], cooldown: '60 min', on: true, lastFired: '\u2014' },
     { id: 'ar_3', name: 'Make.com DLQ alert', conditions: 'When Make.com DLQ items > 0', channels: ['email'], cooldown: '30 min', on: false, lastFired: 'never' },
   ];
 
-  // Platform registrations
   const platformsRegistered = platforms.map(p => ({
     id: p.type || p.id,
     name: p.name,
     status: p.is_connected ? 'active' : 'error',
     events: errors.filter(e => e.platform_type === p.type).length,
-    webhook: `${p.base_url || '—'}`,
+    webhook: `${p.base_url || '\u2014'}`,
     lastSynced: p.last_synced_at,
   }));
 
-  // Team users (keep defaults)
   const teamUsers = [
     { name: 'Ahmad Bukhari', email: 'ahmadbukhari4245@gmail.com', role: 'admin', joined: 'Jun 2025', initials: 'AB', color: '#a78bfa' },
   ];
+
+  // --- Compute workflow uptime from dailyStats ---
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const weekAgo = new Date(now - 7 * 86400000).toISOString().slice(0, 10);
+  const monthAgo = new Date(now - 30 * 86400000).toISOString().slice(0, 10);
+
+  function computeUptime(stats) {
+    const total = stats.reduce((s, d) => s + (d.total_runs || 0), 0);
+    const success = stats.reduce((s, d) => s + (d.success_count || 0), 0);
+    return total > 0 ? Math.round((success / total) * 10000) / 100 : null;
+  }
+
+  const workflowUptime = workflows.map(wf => {
+    const wfStats = dailyStats.filter(d => d.workflow_id === wf.id);
+    const todayS = wfStats.filter(d => d.stat_date === todayStr);
+    const weekS = wfStats.filter(d => d.stat_date >= weekAgo);
+    const monthS = wfStats.filter(d => d.stat_date >= monthAgo);
+    return {
+      id: wf.id,
+      name: wf.name,
+      platform: wf.platform_type,
+      today: computeUptime(todayS),
+      week: computeUptime(weekS),
+      month: computeUptime(monthS),
+      lifetime: computeUptime(wfStats),
+      totalRuns: wfStats.reduce((s, d) => s + (d.total_runs || 0), 0),
+      totalSuccess: wfStats.reduce((s, d) => s + (d.success_count || 0), 0),
+      totalErrors: wfStats.reduce((s, d) => s + (d.error_count || 0), 0),
+    };
+  }).filter(w => w.totalRuns > 0).sort((a, b) => (b.lifetime || 0) - (a.lifetime || 0));
+
+  const overallUptime = {
+    today: computeUptime(dailyStats.filter(d => d.stat_date === todayStr)),
+    week: computeUptime(dailyStats.filter(d => d.stat_date >= weekAgo)),
+    month: computeUptime(dailyStats.filter(d => d.stat_date >= monthAgo)),
+    lifetime: computeUptime(dailyStats),
+  };
 
   window.EL_DATA = {
     events,
@@ -130,16 +162,16 @@ window.EL_DATA_LOADING = (async () => {
     alertRules,
     platformsRegistered,
     teamUsers,
-    // NEW: extra live data for enhanced pages
     workflows,
     dailyStats,
     snapshots,
     platforms,
     todayErrors,
     todayRuns,
+    workflowUptime,
+    overallUptime,
   };
 
-  // Dispatch event so React knows data is ready
   window.dispatchEvent(new Event('el:data-ready'));
   return window.EL_DATA;
 })();
