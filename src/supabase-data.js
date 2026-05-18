@@ -3,8 +3,8 @@
 // Maintains the same window.EL_DATA shape so pages.jsx stays compatible
 
 window.EL_SUPABASE = (() => {
-    const SB = 'https://erpzzrdgbrhapzlcielt.supabase.co/rest/v1';
-    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVycHp6cmRnYnJoYXB6bGNpZWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDAyODcsImV4cCI6MjA5MzQ3NjI4N30.smpODMYoMgDCSFQtdnaYSpayewB4_9K_lwjgq40WBHE';
+  const SB = 'https://erpzzrdgbrhapzlcielt.supabase.co/rest/v1';
+  const KEY = 'sb_publishable_r5FDMEL2kufqPFtAjj9HKA_0tPJXC_4';
   const HDRS = { apikey: KEY, Authorization: `Bearer ${KEY}` };
 
   async function get(table, params) {
@@ -13,7 +13,42 @@ window.EL_SUPABASE = (() => {
     return r.json();
   }
 
-  return { get };
+  async function post(table, body) {
+    const r = await fetch(`${SB}/${table}`, {
+      method: 'POST', headers: { ...HDRS, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(`Supabase POST ${r.status}: ${table}`);
+    return r.json();
+  }
+
+  async function patch(table, params, body) {
+    const r = await fetch(`${SB}/${table}?${params}`, {
+      method: 'PATCH', headers: { ...HDRS, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(`Supabase PATCH ${r.status}: ${table}`);
+    return r.json();
+  }
+
+  async function del(table, params) {
+    const r = await fetch(`${SB}/${table}?${params}`, {
+      method: 'DELETE', headers: { ...HDRS },
+    });
+    if (!r.ok) throw new Error(`Supabase DELETE ${r.status}: ${table}`);
+    return true;
+  }
+
+  async function upsert(table, body) {
+    const r = await fetch(`${SB}/${table}`, {
+      method: 'POST', headers: { ...HDRS, 'Content-Type': 'application/json', Prefer: 'return=representation,resolution=merge-duplicates' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(`Supabase UPSERT ${r.status}: ${table}`);
+    return r.json();
+  }
+
+  return { get, post, patch, del, upsert };
 })();
 
 // Build EL_DATA from Supabase — called once at startup, then available globally
@@ -21,17 +56,19 @@ window.EL_DATA_LOADING = (async () => {
   const sb = window.EL_SUPABASE;
 
   // Parallel fetch all tables
-  const [workflows, errors, dailyStats, snapshots, platforms, executions] = await Promise.all([
+  const [workflows, errors, dailyStats, snapshots, platforms, executions, teamMembers, workflowOwners] = await Promise.all([
     sb.get('el_workflows', 'select=*&order=total_errors.desc.nullslast,total_executions.desc.nullslast&limit=500'),
     sb.get('el_errors', 'select=*&order=occurred_at.desc.nullslast&limit=300'),
     sb.get('el_daily_stats', 'select=*&order=stat_date.desc&limit=1500'),
     sb.get('el_platform_snapshots', 'select=*&order=snapshot_date.desc&limit=10'),
     sb.get('el_platforms', 'select=*'),
     sb.get('el_executions', 'select=id,workflow_id,platform_type,status,started_at,finished_at,duration_ms,error_message,error_node,error_type&order=started_at.desc.nullslast&limit=500'),
+    sb.get('el_team_members', 'select=*&order=name.asc'),
+    sb.get('el_workflow_owners', 'select=*'),
   ]);
 
   // Store raw data for pages that need it
-  window.EL_RAW = { workflows, errors, dailyStats, snapshots, platforms, executions };
+  window.EL_RAW = { workflows, errors, dailyStats, snapshots, platforms, executions, teamMembers, workflowOwners };
 
   // --- Build compatible EL_DATA ---
 
@@ -67,7 +104,6 @@ window.EL_DATA_LOADING = (async () => {
     };
   }).sort((a, b) => a.minutesAgo - b.minutesAgo);
 
-  // Build 24h timeline from daily stats
   const today = new Date().toISOString().slice(0, 10);
   const todayStats = dailyStats.filter(d => d.stat_date === today);
   const todayErrors = todayStats.reduce((s, d) => s + (d.error_count || 0), 0);
@@ -97,8 +133,8 @@ window.EL_DATA_LOADING = (async () => {
   const rawPayload = { error: topErr || {}, workflow: workflows[0] || {} };
 
   const alertRules = [
-    { id: 'ar_1', name: 'Critical errors \u2192 Slack #incidents', conditions: 'When severity is CRITICAL on any platform', channels: ['slack', 'email'], cooldown: '15 min', on: true, lastFired: '\u2014' },
-    { id: 'ar_2', name: 'n8n volume spike', conditions: 'When n8n errors exceed 10 in 1 hour', channels: ['slack'], cooldown: '60 min', on: true, lastFired: '\u2014' },
+    { id: 'ar_1', name: 'Critical errors → Slack #incidents', conditions: 'When severity is CRITICAL on any platform', channels: ['slack', 'email'], cooldown: '15 min', on: true, lastFired: '—' },
+    { id: 'ar_2', name: 'n8n volume spike', conditions: 'When n8n errors exceed 10 in 1 hour', channels: ['slack'], cooldown: '60 min', on: true, lastFired: '—' },
     { id: 'ar_3', name: 'Make.com DLQ alert', conditions: 'When Make.com DLQ items > 0', channels: ['email'], cooldown: '30 min', on: false, lastFired: 'never' },
   ];
 
@@ -107,7 +143,7 @@ window.EL_DATA_LOADING = (async () => {
     name: p.name,
     status: p.is_connected ? 'active' : 'error',
     events: errors.filter(e => e.platform_type === p.type).length,
-    webhook: `${p.base_url || '\u2014'}`,
+    webhook: `${p.base_url || '—'}`,
     lastSynced: p.last_synced_at,
   }));
 
@@ -115,43 +151,11 @@ window.EL_DATA_LOADING = (async () => {
     { name: 'Ahmad Bukhari', email: 'ahmadbukhari4245@gmail.com', role: 'admin', joined: 'Jun 2025', initials: 'AB', color: '#a78bfa' },
   ];
 
-  // --- Compute workflow uptime from dailyStats ---
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const weekAgo = new Date(now - 7 * 86400000).toISOString().slice(0, 10);
-  const monthAgo = new Date(now - 30 * 86400000).toISOString().slice(0, 10);
-
-  function computeUptime(stats) {
-    const total = stats.reduce((s, d) => s + (d.total_runs || 0), 0);
-    const success = stats.reduce((s, d) => s + (d.success_count || 0), 0);
-    return total > 0 ? Math.round((success / total) * 10000) / 100 : null;
-  }
-
-  const workflowUptime = workflows.map(wf => {
-    const wfStats = dailyStats.filter(d => d.workflow_id === wf.id);
-    const todayS = wfStats.filter(d => d.stat_date === todayStr);
-    const weekS = wfStats.filter(d => d.stat_date >= weekAgo);
-    const monthS = wfStats.filter(d => d.stat_date >= monthAgo);
-    return {
-      id: wf.id,
-      name: wf.name,
-      platform: wf.platform_type,
-      today: computeUptime(todayS),
-      week: computeUptime(weekS),
-      month: computeUptime(monthS),
-      lifetime: computeUptime(wfStats),
-      totalRuns: wfStats.reduce((s, d) => s + (d.total_runs || 0), 0),
-      totalSuccess: wfStats.reduce((s, d) => s + (d.success_count || 0), 0),
-      totalErrors: wfStats.reduce((s, d) => s + (d.error_count || 0), 0),
-    };
-  }).filter(w => w.totalRuns > 0).sort((a, b) => (b.lifetime || 0) - (a.lifetime || 0));
-
-  const overallUptime = {
-    today: computeUptime(dailyStats.filter(d => d.stat_date === todayStr)),
-    week: computeUptime(dailyStats.filter(d => d.stat_date >= weekAgo)),
-    month: computeUptime(dailyStats.filter(d => d.stat_date >= monthAgo)),
-    lifetime: computeUptime(dailyStats),
-  };
+  const ownerMap = {};
+  workflowOwners.forEach(wo => {
+    const member = teamMembers.find(m => m.id === wo.owner_id);
+    if (member) ownerMap[wo.workflow_id] = { ...member, assigned_at: wo.assigned_at };
+  });
 
   window.EL_DATA = {
     events,
@@ -168,8 +172,9 @@ window.EL_DATA_LOADING = (async () => {
     platforms,
     todayErrors,
     todayRuns,
-    workflowUptime,
-    overallUptime,
+    teamMembers,
+    workflowOwners,
+    ownerMap,
   };
 
   window.dispatchEvent(new Event('el:data-ready'));
