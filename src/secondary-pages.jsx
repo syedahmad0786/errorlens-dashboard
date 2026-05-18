@@ -264,8 +264,8 @@ const UsersPage = () => {
       const userId = result.id || (result.user && result.user.id);
       if (!userId) throw new Error('Failed to create user');
       // Create profile
-      const SB_URL = 'https://wlnkybvwhsaimeqdcfie.supabase.co/rest/v1';
-      const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indsbmt5YnZ3aHNhaW1lcWRjZmllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0Nzc3NzMsImV4cCI6MjA5MzA1Mzc3M30.w9XOgm8wzIr-d5ojACPr_k88TiDJeEMGWV9XiOp7M1c';
+      const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co/rest/v1';
+      const ANON_KEY = 'sb_publishable_r5FDMEL2kufqPFtAjj9HKA_0tPJXC_4';
       const token = window.EL_AUTH.token();
       await fetch(SB_URL + '/el_profiles', {
         method: 'POST',
