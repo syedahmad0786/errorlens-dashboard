@@ -4,7 +4,7 @@
 
 window.EL_SUPABASE = (() => {
     const SB = 'https://erpzzrdgbrhapzlcielt.supabase.co/rest/v1';
-    const KEY = 'sb_publishable_r5FDMEL2kufqPFtAjj9HKA_0tPJXC_4';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVycHp6cmRnYnJoYXB6bGNpZWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDAyODcsImV4cCI6MjA5MzQ3NjI4N30.smpODMYoMgDCSFQtdnaYSpayewB4_9K_lwjgq40WBHE';
   const HDRS = { apikey: KEY, Authorization: `Bearer ${KEY}` };
 
   async function get(table, params) {
