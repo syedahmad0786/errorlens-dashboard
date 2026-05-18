@@ -38,6 +38,7 @@ const WorkflowsPage = () => {
   // Stats
   const n8nCount = workflows.filter(w => w.platform_type === 'n8n').length;
   const makeCount = workflows.filter(w => w.platform_type === 'make').length;
+  const zapierCount = workflows.filter(w => w.platform_type === 'zapier').length;
   const activeCount = workflows.filter(w => w.is_active && !w.is_archived).length;
   const archivedCount = workflows.filter(w => w.is_archived).length;
   const totalConns = React.useMemo(() => {
@@ -78,9 +79,9 @@ const WorkflowsPage = () => {
         </div>
 
         <div className="seg">
-          {[{v:'all',l:`All (${workflows.length})`, p:null},{v:'n8n',l:`n8n (${n8nCount})`, p:'n8n'},{v:'make',l:`Make (${makeCount})`, p:'make'}].map(m => (
-            <button key={m.v} className={platform === (m.v === 'n8n' || m.v === 'make' ? m.v : 'all') ? 'on' : ''}
-                    onClick={() => setPlatform(m.v === 'n8n' || m.v === 'make' ? m.v : 'all')}
+          {[{v:'all',l:`All (${workflows.length})`, p:null},{v:'n8n',l:`n8n (${n8nCount})`, p:'n8n'},{v:'make',l:`Make (${makeCount})`, p:'make'},{v:'zapier',l:`Zapier (${zapierCount})`, p:'zapier'}].map(m => (
+            <button key={m.v} className={platform === (m.p ? m.v : 'all') ? 'on' : ''}
+                    onClick={() => setPlatform(m.p ? m.v : 'all')}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               {m.p && <PlatformIcon p={m.p} size={15}/>}{m.l}
             </button>
@@ -137,6 +138,7 @@ const WorkflowsPage = () => {
         .wf-card-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
         .wf-card-icon.n8n { background: #ff622214; color: #ff6222; }
         .wf-card-icon.make { background: #6d28d914; color: #6d28d9; }
+.wf-card-icon.zapier { background: #ff4a0014; color: #ff4a00; }
         .wf-card-title { font-weight: 600; font-size: 13px; color: var(--text-primary); line-height: 1.3; }
         .wf-card-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
         .wf-stats { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
@@ -252,7 +254,7 @@ const WorkflowCard = ({ wf, expanded, onToggle }) => {
           {/* Open link */}
           <a href={url} target="_blank" rel="noopener noreferrer"
              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--accent, var(--brand))', textDecoration: 'none', marginBottom: 12, fontWeight: 600 }}>
-            Open in {pt === 'n8n' ? 'n8n' : 'Make.com'} ↗
+            Open in {pt === 'n8n' ? 'n8n' : pt === 'zapier' ? 'Zapier' : 'Make.com'} ↗
           </a>
 
           {/* Connections Used */}
