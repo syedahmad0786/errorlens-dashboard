@@ -6,10 +6,10 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "sidebar": "full",
   "sparklines": true,
   "timeline": "area",
-  "severity": "bar"h
+  "severity": "bar"
 }/*EDITMODE-END*/;
 
-function ErrorLensApp({ inithialRoute = 'overview', forceTheme }) {
+function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [route, setRoute] = React.useState(initialRoute);
   const [openEvent, setOpenEvent] = React.useState(null);
