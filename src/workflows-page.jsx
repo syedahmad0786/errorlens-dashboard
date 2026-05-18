@@ -56,6 +56,7 @@ const WorkflowsPage = () => {
     if (status === 'active') wfs = wfs.filter(w => w.is_active && !w.is_archived);
     if (status === 'archived') wfs = wfs.filter(w => w.is_archived);
     if (status === 'inactive') wfs = wfs.filter(w => !w.is_active && !w.is_archived);
+    if (status === 'zombie') wfs = wfs.filter(w => w.is_active && !w.is_archived && (w.total_executions || 0) === 0);
     if (ownerFilter === 'unassigned') wfs = wfs.filter(w => !ownerMap[w.id]);
     else if (ownerFilter !== 'all') wfs = wfs.filter(w => ownerMap[w.id]?.id === ownerFilter);
     if (search) {
@@ -80,6 +81,7 @@ const WorkflowsPage = () => {
   const zapierCount = workflows.filter(w => w.platform_type === 'zapier').length;
   const activeCount = workflows.filter(w => w.is_active && !w.is_archived).length;
   const assignedCount = workflows.filter(w => ownerMap[w.id]).length;
+  const zombieCount = workflows.filter(w => w.is_active && !w.is_archived && (w.total_executions || 0) === 0).length;
 
   return (
     <div className="content">
@@ -88,6 +90,7 @@ const WorkflowsPage = () => {
           <h1 className="page-title">Workflows</h1>
           <div className="page-sub">
             {workflows.length} total · {activeCount} active · {assignedCount} assigned · {workflows.length - assignedCount} unassigned
+            {zombieCount > 0 && <span style={{ color: '#d97706', fontWeight: 600 }}> · {zombieCount} zombie</span>}
           </div>
         </div>
       </div>
@@ -137,7 +140,7 @@ const WorkflowsPage = () => {
             </select>
 
             <div className="seg">
-              {[{v:'all',l:'All'},{v:'active',l:'Active'},{v:'inactive',l:'Inactive'}].map(m => (
+              {[{v:'all',l:'All'},{v:'active',l:'Active'},{v:'inactive',l:'Inactive'},{v:'zombie',l:'⚠ Zombie'}].map(m => (
                 <button key={m.v} className={status === m.v ? 'on' : ''} onClick={() => setStatus(m.v)}>{m.l}</button>
               ))}
             </div>
@@ -223,6 +226,12 @@ const WorkflowsPage = () => {
         .wf-status-badge.active { background: #05966914; color: #059669; }
         .wf-status-badge.inactive { background: #f5952514; color: #f59525; }
         .wf-status-badge.archived { background: #6b728014; color: #6b7280; }
+        .wf-status-badge.zombie { background: #f59e0b20; color: #d97706; animation: zombiePulse 2s ease-in-out infinite; }
+        @keyframes zombiePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .wf-zombie { border-color: #d9770640 !important; background: linear-gradient(135deg, var(--surface-1) 0%, #f59e0b08 100%); }
+        .wf-zombie:hover { border-color: #d97706 !important; }
+        .wf-card-link { color: var(--text-primary); text-decoration: none; display: block; }
+        .wf-card-link:hover { color: var(--accent, var(--brand)); text-decoration: underline; }
         .wf-detail { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
         .wf-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-secondary); margin: 12px 0 8px; }
         .wf-node-list { display: flex; flex-direction: column; gap: 6px; }
@@ -590,7 +599,8 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
   const conns = meta.connections_used || [];
   const graph = meta.connections_graph || [];
   const url = meta.url || '#';
-  const statusLabel = wf.is_archived ? 'archived' : wf.is_active ? 'active' : 'inactive';
+  const isZombie = wf.is_active && !wf.is_archived && (wf.total_executions || 0) === 0;
+  const statusLabel = isZombie ? 'zombie' : wf.is_archived ? 'archived' : wf.is_active ? 'active' : 'inactive';
   const [assigning, setAssigning] = React.useState(false);
 
   const handleAssign = async (e) => {
@@ -610,11 +620,16 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
   };
 
   return (
-    <div className={`wf-card ${expanded ? 'expanded' : ''}`} onClick={onToggle}>
+    <div className={`wf-card ${expanded ? 'expanded' : ''} ${isZombie ? 'wf-zombie' : ''}`} onClick={onToggle}>
       <div className="wf-card-head">
         <PlatformIcon p={pt} size={34}/>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="wf-card-title">{wf.name || 'Untitled'}</div>
+          <a href={url !== '#' ? url : undefined} target="_blank" rel="noopener noreferrer"
+             className="wf-card-title wf-card-link"
+             onClick={e => { if (url !== '#') e.stopPropagation(); else e.preventDefault(); }}
+             title={url !== '#' ? `Open in ${pt === 'n8n' ? 'n8n' : 'Make.com'}` : wf.name}>
+            {wf.name || 'Untitled'}
+          </a>
           <div className="wf-card-meta">
             {pt} · {wf.trigger_type || 'manual'} · {wf.node_count || nodes.length} nodes
           </div>

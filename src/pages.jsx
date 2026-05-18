@@ -423,6 +423,41 @@ const FeedPage = ({ onOpenEvent }) => {
   const totalPages = Math.max(1, Math.ceil(grouped.length / pageSize));
 
   const toggleSet = (set, setSet, k) => setSet({ ...set, [k]: !set[k] });
+  const [resolvingGroup, setResolvingGroup] = React.useState(null);
+
+  // Resolve/unresolve all errors in a group via el_errors table
+  const resolveGroup = async (group, newResolved) => {
+    setResolvingGroup(group.key);
+    try {
+      const sb = window.EL_SUPABASE;
+      const errorIds = group.instances.map(e => e.id);
+      const now = new Date().toISOString();
+      // Batch update all errors in this group
+      for (const eid of errorIds) {
+        await sb.patch('el_errors', `id=eq.${eid}`, {
+          is_resolved: newResolved,
+          resolved_at: newResolved ? now : null,
+          resolved_by: newResolved ? 'dashboard' : null,
+        });
+      }
+      // Update in-memory status
+      const newStatuses = { ...errorStatuses };
+      errorIds.forEach(eid => { newStatuses[eid] = newResolved ? 'resolved' : 'open'; });
+      setErrorStatuses(newStatuses);
+      // Also update EL_RAW so data persists within session
+      if (window.EL_RAW && window.EL_RAW.errors) {
+        window.EL_RAW.errors.forEach(e => {
+          if (errorIds.includes(e.id)) {
+            e.is_resolved = newResolved;
+            e.resolved_at = newResolved ? now : null;
+          }
+        });
+      }
+    } catch (err) {
+      alert('Failed to update errors: ' + err.message);
+    }
+    setResolvingGroup(null);
+  };
 
   // Reset page when tab changes
   const switchTab = (tab) => { setActiveTab(tab); setPage(1); setExpandedGroup(null); setExpandedEvent(null); };
@@ -529,6 +564,21 @@ const FeedPage = ({ onOpenEvent }) => {
                                 <span className="group-range">
                                   {g.instances[g.instances.length - 1].timestamp} — {g.instances[0].timestamp}
                                 </span>
+                              </div>
+                              <div className="group-actions" style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                                {g.status !== 'resolved' ? (
+                                  <button className="btn btn-primary btn-xs" disabled={resolvingGroup === g.key}
+                                    onClick={(ev) => { ev.stopPropagation(); resolveGroup(g, true); }}
+                                    style={{ fontSize: 11, padding: '3px 10px', background: '#059669' }}>
+                                    {resolvingGroup === g.key ? 'Resolving…' : `✓ Resolve All (${g.instances.length})`}
+                                  </button>
+                                ) : (
+                                  <button className="btn btn-ghost btn-xs" disabled={resolvingGroup === g.key}
+                                    onClick={(ev) => { ev.stopPropagation(); resolveGroup(g, false); }}
+                                    style={{ fontSize: 11, padding: '3px 10px', color: '#f59525' }}>
+                                    {resolvingGroup === g.key ? 'Reopening…' : '↺ Reopen All'}
+                                  </button>
+                                )}
                               </div>
                             </div>
                             <div className="instance-list">
