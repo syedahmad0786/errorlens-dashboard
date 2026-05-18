@@ -242,8 +242,8 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
                   </span>
                   <span className="mono" style={{ color: 'var(--text-tertiary)' }}>{r.n}</span>
                 </div>
-                <div style={{ height: 4, background: 'var(--card-hover)', borderRadius: 999 }}>
-                  <div style={{ height: '100%', width: `${(r.n/38)*100}%`, background: `var(--sev-${r.sev})`, borderRadius: 999 }}/>
+                <div style={{ height: 4, background: 'var(--card-hover)', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min((r.n/38)*100,100)}%`, background: `var(--sev-${r.sev})`, borderRadius: 999 }}/>
                 </div>
               </div>
             ))}
