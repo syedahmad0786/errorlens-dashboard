@@ -9,8 +9,8 @@
 
 const https = require('https');
 
-const SB_URL = 'https://wlnkybvwhsaimeqdcfie.supabase.co';
-const SB_KEY = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indsbmt5YnZ3aHNhaW1lcWRjZmllIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzQ3Nzc3MywiZXhwIjoyMDkzMDUzNzczfQ.0Esu8mNxmfUzQnEyV4f9iwiBrV9cGctC906zUIIIba0';
+const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co';
+const SB_KEY = process.env.SUPABASE_SERVICE_KEY || 'sb_secret_8wSGuMq-azxRHB6NgTycIA_rcehHFxc';
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'el-wh-2026-secret';
 
 function sbRequest(path, method, body) {
