@@ -3,7 +3,7 @@
 
 window.EL_AUTH = (() => {
     const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co';
-    const ANON_KEY = 'sb_publishable_r5FDMEL2kufqPFtAjj9HKA_0tPJXC_4';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVycHp6cmRnYnJoYXB6bGNpZWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDAyODcsImV4cCI6MjA5MzQ3NjI4N30.smpODMYoMgDCSFQtdnaYSpayewB4_9K_lwjgq40WBHE';
 
   let _session = null; // { access_token, refresh_token, user }
   let _profile = null; // { id, email, display_name, role }
