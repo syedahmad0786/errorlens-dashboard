@@ -2,8 +2,8 @@
 // Uses Supabase Auth REST API directly (no client library)
 
 window.EL_AUTH = (() => {
-  const SB_URL = 'https://wlnkybvwhsaimeqdcfie.supabase.co';
-  const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indsbmt5YnZ3aHNhaW1lcWRjZmllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0Nzc3NzMsImV4cCI6MjA5MzA1Mzc3M30.w9XOgm8wzIr-d5ojACPr_k88TiDJeEMGWV9XiOp7M1c';
+    const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co';
+    const ANON_KEY = 'sb_publishable_r5FDMEL2kufqPFtAjj9HKA_0tPJXC_4';
 
   let _session = null; // { access_token, refresh_token, user }
   let _profile = null; // { id, email, display_name, role }
