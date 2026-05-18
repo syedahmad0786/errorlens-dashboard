@@ -13,6 +13,7 @@ const WorkflowsPage = () => {
   const [ownerMap, setOwnerMap] = React.useState({});
   const [teamMembers, setTeamMembers] = React.useState([]);
   const [refreshKey, setRefreshKey] = React.useState(0);
+  const [visibleCount, setVisibleCount] = React.useState(50);
 
   const raw = window.EL_RAW || {};
   const workflows = raw.workflows || [];
@@ -156,16 +157,24 @@ const WorkflowsPage = () => {
           </div>
 
           <div className="page-sub" style={{ margin: '0 0 8px', fontWeight: 600 }}>
-            Showing {filtered.length} of {workflows.length} workflows
+            Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} workflows {filtered.length < workflows.length ? `(filtered from ${workflows.length})` : ''}
           </div>
 
           <div className={view === 'grid' ? 'wf-grid' : 'wf-list'}>
-            {filtered.map(wf => (
+            {filtered.slice(0, visibleCount).map(wf => (
               <WorkflowCard key={wf.id} wf={wf} expanded={expandedId === wf.id}
                 onToggle={() => setExpandedId(expandedId === wf.id ? null : wf.id)}
                 owner={ownerMap[wf.id]} teamMembers={teamMembers} onOwnerChange={refreshOwnership}/>
             ))}
           </div>
+          {visibleCount < filtered.length && (
+            <div style={{ textAlign: 'center', padding: 16 }}>
+              <button className="btn btn-primary" onClick={() => setVisibleCount(v => v + 50)}
+                style={{ fontSize: 13, padding: '8px 24px' }}>
+                Show more ({filtered.length - visibleCount} remaining)
+              </button>
+            </div>
+          )}
           {filtered.length === 0 && (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)', fontSize: 13 }}>No workflows match your filters</div>
           )}
