@@ -273,8 +273,8 @@ const FeedPage = ({ onOpenEvent }) => {
 
   // Merge persisted statuses into events
   const eventsWithStatus = React.useMemo(() => {
-    if (!D || !eventsWithStatus) return [];
-    return eventsWithStatus.map(e => {
+    if (!D || !D.events) return [];
+    return D.events.map(e => {
       const persisted = errorStatuses[e.id];
       return persisted ? { ...e, status: persisted } : e;
     });
