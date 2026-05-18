@@ -6,11 +6,11 @@
  * Zero dependencies — uses only Node.js built-in https module
  */
 
-const https = require('https');
+const https = require('https');h
 
 // ── Config ──────────────────────────────────────────────────────────
-const SB_URL = 'https://wlnkybvwhsaimeqdcfie.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indsbmt5YnZ3aHNhaW1lcWRjZmllIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzQ3Nzc3MywiZXhwIjoyMDkzMDUzNzczfQ.0Esu8mNxmfUzQnEyV4f9iwiBrV9cGctC906zUIIIba0';
+const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co';
+const SB_KEY = 'sb_secret_8wSGuMq-azxRHB6NgTycIA_rcehHFxc';
 
 const N8N_URL = 'https://n8n.aimanagingservices.com/api/v1';
 const N8N_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyNDk2NzU4My00MzM1LTRiYjMtOTFiZi02MTNhMTNmNzk2ZWIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzczNzkwMDk0fQ.XKLaNQ5A8F6Q0K3tF1s2RH8ZBXov0dTdu92_KjiHi4E';
