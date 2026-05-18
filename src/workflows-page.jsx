@@ -1,4 +1,4 @@
-// ErrorLens â Workflows Explorer page with Developer Ownership
+// ErrorLens — Workflows Explorer page with Developer Ownership
 // Shows all n8n + Make.com workflows with owner assignment, developer stats, and filtering
 
 const WorkflowsPage = () => {
@@ -86,7 +86,7 @@ const WorkflowsPage = () => {
         <div>
           <h1 className="page-title">Workflows</h1>
           <div className="page-sub">
-            {workflows.length} total Â· {activeCount} active Â· {assignedCount} assigned Â· {workflows.length - assignedCount} unassigned
+            {workflows.length} total · {activeCount} active · {assignedCount} assigned · {workflows.length - assignedCount} unassigned
           </div>
         </div>
       </div>
@@ -112,7 +112,7 @@ const WorkflowsPage = () => {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
             <div className="topbar-search" style={{ flex: '1 1 220px', maxWidth: 360 }}>
               <Icon name="search" className="ico"/>
-              <input placeholder="Search workflows, apps, ownersâ¦" value={search}
+              <input placeholder="Search workflows, apps, owners…" value={search}
                      onChange={e => setSearch(e.target.value)} style={{ width: '100%' }}/>
             </div>
 
@@ -319,7 +319,7 @@ const DeveloperStatsPanel = ({ workflows, errors, executions, ownerMap, teamMemb
               </div>
               <div>
                 <div className="dev-name">{ds.member.name}</div>
-                <div className="dev-role">{ds.member.role || 'Developer'} Â· {ds.member.email || ''}</div>
+                <div className="dev-role">{ds.member.role || 'Developer'} · {ds.member.email || ''}</div>
               </div>
             </div>
 
@@ -327,7 +327,7 @@ const DeveloperStatsPanel = ({ workflows, errors, executions, ownerMap, teamMemb
               <div className="dev-metric">
                 <div className="dev-metric-label">Workflows</div>
                 <div className="dev-metric-value">{ds.wfCount}</div>
-                <div className="dev-metric-sub">{ds.activeWfs} active Â· {ds.inactiveWfs} inactive</div>
+                <div className="dev-metric-sub">{ds.activeWfs} active · {ds.inactiveWfs} inactive</div>
               </div>
               <div className="dev-metric">
                 <div className="dev-metric-label">Success Rate</div>
@@ -343,7 +343,7 @@ const DeveloperStatsPanel = ({ workflows, errors, executions, ownerMap, teamMemb
               </div>
               <div className="dev-metric">
                 <div className="dev-metric-label">Avg Resolution</div>
-                <div className="dev-metric-value">{ds.avgResolutionMins > 0 ? formatDuration(ds.avgResolutionMins) : 'â'}</div>
+                <div className="dev-metric-value">{ds.avgResolutionMins > 0 ? formatDuration(ds.avgResolutionMins) : '—'}</div>
                 <div className="dev-metric-sub">{ds.avgResolutionMins > 0 ? 'per error' : 'no data'}</div>
               </div>
             </div>
@@ -411,7 +411,7 @@ const BulkAssignPanel = ({ workflows, ownerMap, teamMembers, onRefresh }) => {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.size} selected</span>
             <select value={bulkOwner} onChange={e => setBulkOwner(e.target.value)} className="ownership-select">
-              <option value="">Assign toâ¦</option>
+              <option value="">Assign to…</option>
               {teamMembers.filter(m => m.is_active).map(m => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
@@ -449,7 +449,7 @@ const BulkAssignPanel = ({ workflows, ownerMap, teamMembers, onRefresh }) => {
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </select>
-                {saving[wf.id] && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginLeft: 6 }}>savingâ¦</span>}
+                {saving[wf.id] && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginLeft: 6 }}>saving…</span>}
               </td>
             </tr>
           ))}
@@ -525,7 +525,7 @@ const TeamMembersPanel = ({ teamMembers, onRefresh }) => {
           </select>
           <button className="btn btn-primary" onClick={addMember} disabled={saving || !name.trim()}
                   style={{ fontSize: 12, padding: '6px 16px' }}>
-            {saving ? 'Addingâ¦' : 'Add Member'}
+            {saving ? 'Adding…' : 'Add Member'}
           </button>
         </div>
       </div>
@@ -549,7 +549,7 @@ const TeamMembersPanel = ({ teamMembers, onRefresh }) => {
               ) : (
                 <>
                   <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{m.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{m.email || 'No email'} Â· {m.role || 'developer'} Â· {m.is_active ? 'Active' : 'Inactive'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{m.email || 'No email'} · {m.role || 'developer'} · {m.is_active ? 'Active' : 'Inactive'}</div>
                 </>
               )}
             </div>
@@ -607,7 +607,7 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="wf-card-title">{wf.name || 'Untitled'}</div>
           <div className="wf-card-meta">
-            {pt} Â· {wf.trigger_type || 'manual'} Â· {wf.node_count || nodes.length} nodes
+            {pt} · {wf.trigger_type || 'manual'} · {wf.node_count || nodes.length} nodes
           </div>
         </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -661,7 +661,7 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
           )}
           <a href={url} target="_blank" rel="noopener noreferrer"
              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--accent, var(--brand))', textDecoration: 'none', marginBottom: 12, fontWeight: 600 }}>
-            Open in {pt === 'n8n' ? 'n8n' : 'Make.com'} â
+            Open in {pt === 'n8n' ? 'n8n' : 'Make.com'} →
           </a>
           {conns.length > 0 && (
             <>
@@ -672,7 +672,7 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: stringToColor(c.type || '') }}/>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Type: {c.type} Â· Used in: {(c.usedIn || []).join(', ')}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Type: {c.type} · Used in: {(c.usedIn || []).join(', ')}</div>
                     </div>
                   </div>
                 ))}
@@ -726,10 +726,10 @@ const WorkflowFlowDiagram = ({ nodes, graph }) => {
             <div className="wf-node-dot" style={{ background: n.isTrigger ? 'var(--sev-info)' : stringToColor(n.app || 'default') }}/>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span className="wf-node-name">{n.name}</span>
-              <span className="wf-node-type"> Â· {n.app || 'unknown'}{n.operation ? ` â ${n.operation}` : ''}</span>
+              <span className="wf-node-type"> · {n.app || 'unknown'}{n.operation ? ` → ${n.operation}` : ''}</span>
             </div>
           </div>
-          {i < ordered.length - 1 && <div className="wf-flow-arrow">â</div>}
+          {i < ordered.length - 1 && <div className="wf-flow-arrow">↓</div>}
         </React.Fragment>
       ))}
     </div>
