@@ -6,7 +6,7 @@
  * Zero dependencies — uses only Node.js built-in https module
  */
 
-const https = require('https');h
+const https = require('https');
 
 // ── Config ──────────────────────────────────────────────────────────
 const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co';
