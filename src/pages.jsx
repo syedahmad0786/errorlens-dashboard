@@ -77,7 +77,7 @@ const Topbar = ({ crumbs, onSearch }) => (
 );
 
 // ============ Overview ============
-const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
+const OverviewPage = ({ tweaks, onOpenEvent, onNav, onOpenWorkflow }) => {
   // Live KPIs from Supabase data
   const raw = window.EL_RAW || {};
   const wfs = raw.workflows || [];
@@ -228,17 +228,19 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
               .sort((a, b) => (b.total_errors || 0) - (a.total_errors || 0))
               .slice(0, 5)
               .map(w => ({
+                id: w.id,
                 wf: w.name,
                 n: w.total_errors || 0,
                 sev: (w.error_rate || 0) > 50 ? 'critical' : (w.error_rate || 0) > 10 ? 'error' : 'warn',
                 platform: w.platform_type,
               }))
             ).map((r, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }}
+                   onClick={() => onOpenWorkflow && onOpenWorkflow(r.id)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-primary)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <PlatformIcon p={r.platform} size={18}/>
-                    <SeverityDot sev={r.sev} size={6}/>{r.wf}
+                    <SeverityDot sev={r.sev} size={6}/><span style={{ borderBottom: '1px dashed var(--border)', paddingBottom: 1 }}>{r.wf}</span>
                   </span>
                   <span className="mono" style={{ color: 'var(--text-tertiary)' }}>{r.n}</span>
                 </div>
@@ -301,9 +303,12 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
                 const fmt = v => v != null ? v + '%' : '—';
                 return (
                   <tr key={w.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'var(--card-hover)' }}>
-                    <td style={{ padding: '8px 14px', color: 'var(--text)', fontWeight: 500, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.name}</td>
+                    <td style={{ padding: '8px 14px', color: 'var(--text)', fontWeight: 500, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                          onClick={() => onOpenWorkflow && onOpenWorkflow(w.id)}
+                          title="Click to view workflow details">
+                        <span style={{ borderBottom: '1px dashed var(--border)', paddingBottom: 1 }}>{w.name}</span></td>
                     <td style={{ padding: '8px 8px' }}>
-                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: w.platform === 'n8n' ? 'rgba(249,115,22,0.15)' : 'rgba(168,85,247,0.15)', color: w.platform === 'n8n' ? '#f97316' : '#a855f7' }}>{w.platform}</span>
+                      <PlatformIcon p={w.platform} size={22}/>
                     </td>
                     <td style={{ padding: '8px 8px', textAlign: 'right', color: pctColor(w.today), fontWeight: 600 }}>{fmt(w.today)}</td>
                     <td style={{ padding: '8px 8px', textAlign: 'right', color: pctColor(w.week), fontWeight: 600 }}>{fmt(w.week)}</td>
