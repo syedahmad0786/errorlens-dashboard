@@ -2,8 +2,8 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ErrorLens — Error Monitoring Dashboard</title>
-<style>/* ErrorLens — themed styles
+<title>ErrorLens â Error Monitoring Dashboard</title>
+<style>/* ErrorLens â themed styles
    Three themes via [data-theme]: dark (brief), light (brief alt), ma (Modern Amenities)
 */
 
@@ -646,7 +646,7 @@
   --accent-subtle:  rgba(232, 192, 32, 0.16);
   --accent-text:    #000000;
 
-  /* Severity stays sacred — but tuned to live on warm off-white */
+  /* Severity stays sacred â but tuned to live on warm off-white */
   --sev-critical: #c4302b;
   --sev-error:    #d97516;
   --sev-warn:     #c89a18;
@@ -1742,7 +1742,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
     position: fixed; inset: 0;
     overflow: hidden;
   }
-  /* Route launcher chip — bottom-left */
+  /* Route launcher chip â bottom-left */
   .launcher {
     position: fixed;
     bottom: 16px; left: 16px;
@@ -1765,70 +1765,8 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
     font-size: 10px;
   }
   .launcher button:hover { background: rgba(255,255,255,0.08); color: white; }
-  .launcher button.on { background: rgba(255,255,2550.12); color: white; }
+  .launcher button.on { background: rgba(255,255,255,0.12); color: white; }
   .launcher .div { width: 1px; background: rgba(255,255,255,0.1); margin: 4px 4px; }
-
-/* Workflow Tabs */
-.wf-tabs {
-  display: flex; gap: 6px; padding: 0 0 16px 0; overflow-x: auto;
-  scrollbar-width: thin; flex-wrap: nowrap;
-}
-.wf-tab {
-  display: flex; align-items: center; gap: 6px; padding: 7px 14px;
-  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text-secondary); font-size: 12px; font-weight: 500;
-  cursor: pointer; white-space: nowrap; transition: all .15s;
-}
-.wf-tab:hover { border-color: var(--accent); color: var(--text-primary); }
-.wf-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
-.wf-tab-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
-.wf-tab-count {
-  background: rgba(255,255,255,0.12); padding: 1px 7px; border-radius: 10px;
-  font-size: 11px; font-variant-numeric: tabular-nums;
-}
-.wf-tab.active .wf-tab-count { background: rgba(255,255,255,0.25); }
-.wf-tab-open {
-  font-size: 10px; color: var(--sev-error); font-weight: 600;
-}
-.wf-tab.active .wf-tab-open { color: rgba(255,200,200,0.9); }
-
-/* Grouped Error Rows */
-.group-row { cursor: pointer; }
-.group-row:hover td { background: rgba(var(--accent-rgb, 59,130,246), 0.04); }
-.group-row.expanded td { background: rgba(var(--accent-rgb, 59,130,246), 0.06); border-bottom-color: transparent; }
-.err-msg-wrap { display: flex; align-items: center; gap: 6px; }
-.expand-chevron { color: var(--text-tertiary); flex-shrink: 0; transition: transform .15s; }
-.count-badge {
-  display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px;
-  font-weight: 600; font-variant-numeric: tabular-nums;
-  background: rgba(255,255,255,0.06); color: var(--text-secondary);
-}
-.count-badge.warm { background: rgba(234,179,8,0.15); color: var(--sev-warn); }
-.count-badge.hot { background: rgba(239,68,68,0.15); color: var(--sev-error); }
-
-/* Expanded Group Instances */
-.group-instances { padding: 0; }
-.group-header { padding: 10px 16px; background: rgba(var(--accent-rgb, 59,130,246), 0.04); border-bottom: 1px solid var(--border); }
-.group-summary { display: flex; align-items: center; gap: 12px; font-size: 12px; flex-wrap: wrap; }
-.group-code { background: var(--card); padding: 2px 8px; border-radius: 4px; font-size: 11px; color: var(--text-secondary); }
-.group-node { display: flex; align-items: center; gap: 4px; color: var(--accent); font-size: 11px; font-weight: 500; }
-.group-range { color: var(--text-tertiary); font-size: 11px; margin-left: auto; }
-
-.instance-list { max-height: 400px; overflow-y: auto; scrollbar-width: thin; }
-.instance-row { border-bottom: 1px solid var(--border); }
-.instance-row:last-child { border-bottom: none; }
-.instance-main {
-  display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer;
-  font-size: 12px; transition: background .1s;
-}
-.instance-main:hover { background: rgba(255,255,255,0.02); }
-.instance-row.instance-open .instance-main { background: rgba(var(--accent-rgb, 59,130,246), 0.06); }
-.instance-num { color: var(--text-tertiary); font-size: 10px; font-weight: 600; min-width: 24px; }
-.instance-id { color: var(--text-secondary); font-size: 11px; }
-.instance-time { color: var(--text-tertiary); font-size: 11px; font-variant-numeric: tabular-nums; }
-.instance-detail { padding: 0 16px 12px 50px; }
-.btn-xs { height: 22px; font-size: 10px; padding: 0 8px; gap: 4px; }
-
 </style>
 </head>
 <body>
@@ -1840,26 +1778,26 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js" crossorigin="anonymous"></script>
 
-<!-- Data layer -->
-<script src="src/api-client.js?v=1779400000000"></script>
-<script src="src/mock-data.js?v=1779400000000"></script>
-<script src="src/supabase-auth.js?v=1779400000000"></script>
-<script src="src/supabase-data.js?v=1779400000000"></script>
+<!-- Auth + Data layer -->
+<script src="src/auth.js"></script>
+<script src="src/api-client.js"></script>
+<script src="src/mock-data.js"></script>
+<script src="src/supabase-data.js"></script>
 
 <!-- UI Components -->
-<script type="text/babel" src="src/tweaks-panel.jsx?v=1779400000000"></script>
-<script type="text/babel" src="src/icons.jsx?v=1779400000000"></script>
-<script type="text/babel" src="src/pages.jsx?v=1779400000000"></script>
-<script type="text/babel" src="src/secondary-pages.jsx?v=1779400000000"></script>
-<script type="text/babel" src="src/workflows-page.jsx?v=1779400000000"></script>
-<script type="text/babel" src="src/app.jsx?v=1779400000000"></script>
+<script type="text/babel" src="src/tweaks-panel.jsx"></script>
+<script type="text/babel" src="src/icons.jsx"></script>
+<script type="text/babel" src="src/pages.jsx"></script>
+<script type="text/babel" src="src/secondary-pages.jsx"></script>
+<script type="text/babel" src="src/workflows-page.jsx"></script>
+<script type="text/babel" src="src/app.jsx"></script>
 
 <script type="text/babel">
   const { useState, useEffect } = React;
 
   function getRouteFromHash() {
     const hash = window.location.hash.replace('#/', '').replace('#', '');
-    const valid = ['overview','events','event','alerts','integrations','users','settings','login','workflows'];
+    const valid = ['overview','events','event','alerts','integrations','users','billing','settings','login','workflows'];
     return valid.includes(hash) ? hash : 'overview';
   }
 
