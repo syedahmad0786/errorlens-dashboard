@@ -1,208 +1,121 @@
-// ErrorLens — Supabase Auth layer
-// Uses Supabase Auth REST API directly (no client library)
+// ErrorLens â Supabase Auth layer
+// Provides window.EL_AUTH for login, logout, session management
 
 window.EL_AUTH = (() => {
-    const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co';
-    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVycHp6cmRnYnJoYXB6bGNpZWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDAyODcsImV4cCI6MjA5MzQ3NjI4N30.smpODMYoMgDCSFQtdnaYSpayewB4_9K_lwjgq40WBHE';
+  const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co';
+  const ANON_KEY = 'sb_publishable_r5FDMEL2kufqPFtAjj9HKA_0tPJXC_4';
 
-  let _session = null; // { access_token, refresh_token, user }
-  let _profile = null; // { id, email, display_name, role }
-  const _listeners = [];
+  let _session = null;
+  let _user = null;
 
-  // Restore session from localStorage
-  try {
-    const saved = localStorage.getItem('el_session');
-    if (saved) _session = JSON.parse(saved);
-  } catch(e) {}
+  // Storage keys
+  const ACCESS_KEY = 'el_access_token';
+  const REFRESH_KEY = 'el_refresh_token';
 
-  function _save() {
-    if (_session) localStorage.setItem('el_session', JSON.stringify(_session));
-    else localStorage.removeItem('el_session');
-    _listeners.forEach(fn => fn(_session, _profile));
-  }
-
-  function _headers(token) {
-    return {
+  async function _fetch(path, opts = {}) {
+    const url = `${SB_URL}/auth/v1${path}`;
+    const headers = {
       'Content-Type': 'application/json',
       apikey: ANON_KEY,
-      Authorization: `Bearer ${token || ANON_KEY}`,
+      ...(opts.headers || {}),
     };
+    const res = await fetch(url, { ...opts, headers });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error_description || data.msg || data.message || `Auth error ${res.status}`);
+    return data;
+  }
+
+  // Initialize â check for existing session in localStorage
+  async function init() {
+    const accessToken = localStorage.getItem(ACCESS_KEY);
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+
+    if (!accessToken || !refreshToken) return null;
+
+    // Try to get user with existing token
+    try {
+      const user = await _fetch('/user', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (user && user.id) {
+        _session = { access_token: accessToken, refresh_token: refreshToken };
+        _user = user;
+        return _session;
+      }
+    } catch (e) {
+      // Token expired â try refresh
+      try {
+        const refreshed = await _fetch('/token?grant_type=refresh_token', {
+          method: 'POST',
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+        if (refreshed.access_token) {
+          _session = refreshed;
+          _user = refreshed.user;
+          localStorage.setItem(ACCESS_KEY, refreshed.access_token);
+          localStorage.setItem(REFRESH_KEY, refreshed.refresh_token);
+          return _session;
+        }
+      } catch (e2) {
+        // Refresh failed â clear and require re-login
+        localStorage.removeItem(ACCESS_KEY);
+        localStorage.removeItem(REFRESH_KEY);
+      }
+    }
+    return null;
   }
 
   // Sign in with email + password
   async function signIn(email, password) {
-    const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+    const data = await _fetch('/token?grant_type=password', {
       method: 'POST',
-      headers: _headers(),
       body: JSON.stringify({ email, password }),
     });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err.error_description || err.msg || 'Invalid credentials');
+    if (data.access_token) {
+      _session = data;
+      _user = data.user;
+      localStorage.setItem(ACCESS_KEY, data.access_token);
+      localStorage.setItem(REFRESH_KEY, data.refresh_token);
+      return data;
     }
-    const data = await r.json();
-    _session = { access_token: data.access_token, refresh_token: data.refresh_token, user: data.user };
-    await _loadProfile();
-    _save();
-    return _session;
-  }
-
-  // Sign up new user (admin-only: called via admin invite flow)
-  async function signUp(email, password, metadata) {
-    const r = await fetch(`${SB_URL}/auth/v1/signup`, {
-      method: 'POST',
-      headers: _headers(),
-      body: JSON.stringify({ email, password, data: metadata || {} }),
-    });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err.error_description || err.msg || 'Sign up failed');
-    }
-    return r.json();
+    throw new Error('Sign in failed');
   }
 
   // Sign out
   async function signOut() {
-    if (_session) {
-      await fetch(`${SB_URL}/auth/v1/logout`, {
-        method: 'POST',
-        headers: _headers(_session.access_token),
-      }).catch(() => {});
-    }
-    _session = null;
-    _profile = null;
-    _save();
-  }
-
-  // Get current user from auth
-  async function getUser() {
-    if (!_session) return null;
-    const r = await fetch(`${SB_URL}/auth/v1/user`, {
-      headers: _headers(_session.access_token),
-    });
-    if (!r.ok) { _session = null; _profile = null; _save(); return null; }
-    const user = await r.json();
-    _session.user = user;
-    return user;
-  }
-
-  // Load user profile from el_profiles table
-  async function _loadProfile() {
-    if (!_session) return;
-    try {
-      const SB_REST = `${SB_URL}/rest/v1`;
-      const r = await fetch(`${SB_REST}/el_profiles?id=eq.${_session.user.id}&select=*`, {
-        headers: { apikey: ANON_KEY, Authorization: `Bearer ${_session.access_token}` },
-      });
-      if (r.ok) {
-        const rows = await r.json();
-        _profile = rows[0] || { id: _session.user.id, email: _session.user.email, display_name: _session.user.email.split('@')[0], role: 'viewer' };
-      }
-    } catch(e) {
-      _profile = { id: _session.user.id, email: _session.user.email, display_name: _session.user.email.split('@')[0], role: 'viewer' };
-    }
-  }
-
-  // List all users (admin only) — reads from el_profiles
-  async function listUsers() {
-    if (!_session) return [];
-    const SB_REST = `${SB_URL}/rest/v1`;
-    const r = await fetch(`${SB_REST}/el_profiles?select=*&order=created_at.asc`, {
-      headers: { apikey: ANON_KEY, Authorization: `Bearer ${_session.access_token}` },
-    });
-    if (!r.ok) return [];
-    return r.json();
-  }
-
-  // Update user role (admin only)
-  async function updateUserRole(userId, role) {
-    const SB_REST = `${SB_URL}/rest/v1`;
-    const r = await fetch(`${SB_REST}/el_profiles?id=eq.${userId}`, {
-      method: 'PATCH',
-      headers: { ...{ apikey: ANON_KEY, Authorization: `Bearer ${_session.access_token}` }, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ role }),
-    });
-    return r.ok;
-  }
-
-  // Error status persistence (acknowledge / resolve)
-  async function setErrorStatus(errorId, status) {
-    // status: 'open', 'acknowledged', 'resolved'
-    if (!_session) throw new Error('Not authenticated');
-    const SB_REST = `${SB_URL}/rest/v1`;
-    // Upsert into el_error_status
-    const body = {
-      error_id: errorId,
-      status: status,
-      updated_by: _session.user.id,
-      updated_at: new Date().toISOString(),
-    };
-    const r = await fetch(`${SB_REST}/el_error_status`, {
-      method: 'POST',
-      headers: {
-        apikey: ANON_KEY,
-        Authorization: `Bearer ${_session.access_token}`,
-        'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates,return=representation',
-      },
-      body: JSON.stringify(body),
-    });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err.message || 'Failed to update error status');
-    }
-    return r.json();
-  }
-
-  // Get all error statuses
-  async function getErrorStatuses() {
-    if (!_session) return [];
-    const SB_REST = `${SB_URL}/rest/v1`;
-    const r = await fetch(`${SB_REST}/el_error_status?select=*`, {
-      headers: { apikey: ANON_KEY, Authorization: `Bearer ${_session.access_token}` },
-    });
-    if (!r.ok) return [];
-    return r.json();
-  }
-
-  // Refresh session on load
-  async function init() {
-    if (!_session) return null;
-    try {
-      // Verify token is still valid
-      const user = await getUser();
-      if (user) {
-        await _loadProfile();
-        _save();
-        return _session;
-      }
-      // Try refresh
-      if (_session.refresh_token) {
-        const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
+    if (_session && _session.access_token) {
+      try {
+        await _fetch('/logout', {
           method: 'POST',
-          headers: _headers(),
-          body: JSON.stringify({ refresh_token: _session.refresh_token }),
+          headers: { Authorization: `Bearer ${_session.access_token}` },
         });
-        if (r.ok) {
-          const data = await r.json();
-          _session = { access_token: data.access_token, refresh_token: data.refresh_token, user: data.user };
-          await _loadProfile();
-          _save();
-          return _session;
-        }
-      }
-    } catch(e) {}
+      } catch (e) { /* ignore logout errors */ }
+    }
     _session = null;
-    _profile = null;
-    _save();
-    return null;
+    _user = null;
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
   }
 
-  function onAuthChange(fn) { _listeners.push(fn); }
-  function session() { return _session; }
-  function profile() { return _profile; }
-  function isAdmin() { return _profile && _profile.role === 'admin'; }
-  function token() { return _session ? _session.access_token : null; }
+  // Get user profile in the shape the app expects
+  function profile() {
+    if (!_user) return null;
+    const meta = _user.user_metadata || {};
+    const name = meta.display_name || meta.full_name || _user.email.split('@')[0];
+    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    return {
+      name,
+      email: _user.email,
+      role: meta.role || 'viewer',
+      initials,
+      color: '#a78bfa',
+    };
+  }
 
-  return { signIn, signUp, signOut, getUser, init, onAuthChange, session, profile, isAdmin, token, listUsers, updateUserRole, setErrorStatus, getErrorStatuses };
+  // Get access token (for authenticated API calls)
+  function accessToken() {
+    return _session ? _session.access_token : null;
+  }
+
+  return { init, signIn, signOut, profile, accessToken };
 })();
