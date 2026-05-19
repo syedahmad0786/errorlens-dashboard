@@ -71,20 +71,47 @@ const AnalyticsPage = () => {
         </div>
       </div>
 
-      {/* KPI cards */}
-      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {[
-          { label: 'Total Errors', value: totalErrors, color: 'var(--sev-error)' },
-          { label: 'Total Executions', value: totalRuns.toLocaleString(), color: 'var(--status-resolved)' },
-          { label: 'Avg Daily Errors', value: avgDailyErrors, color: 'var(--sev-warn)' },
-          { label: 'Error Rate', value: `${errorRate}%`, color: totalErrors > 50 ? 'var(--sev-critical)' : 'var(--sev-info)' },
-        ].map((k, i) => (
-          <div key={i} className="card kpi" style={{ ['--kpi-color']: k.color }}>
-            <div className="kpi-label">{k.label}</div>
-            <div className="kpi-value">{k.value}</div>
+      {/* KPI cards with period-over-period deltas */}
+      {(() => {
+        const cmp = (window.EL_DATA && window.EL_DATA.statsComparison) || null;
+        // Pick comparison set by range
+        const cmpSet = !cmp ? null : (range === '7d' ? cmp.wow : range === '30d' ? cmp.mom : cmp.dod);
+        const cmpLabel = range === '7d' ? 'vs prev 7d' : range === '30d' ? 'vs prev 30d' : 'vs yesterday';
+
+        const renderDelta = (d) => {
+          if (!d) return null;
+          // For errors, "down" is good (green); for runs, "up" is good
+          const isError = d.metric === 'errors' || d.metric === 'rate';
+          const goodDir = isError ? 'down' : 'up';
+          const isGood = d.direction === goodDir || d.direction === 'flat';
+          const color = d.direction === 'flat' ? 'var(--text-tertiary)' : isGood ? '#059669' : '#ef4444';
+          const arrow = d.direction === 'up' ? '↑' : d.direction === 'down' ? '↓' : '→';
+          return (
+            <span style={{ fontSize: 11, color, fontWeight: 600, marginLeft: 8 }}>
+              {arrow} {Math.abs(d.pct)}% <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>{cmpLabel}</span>
+            </span>
+          );
+        };
+
+        const errorRateNum = totalRuns ? (totalErrors / totalRuns * 100) : 0;
+        const cards = [
+          { label: 'Total Errors',     value: totalErrors,                        color: 'var(--sev-error)',     delta: cmpSet?.errors    && { ...cmpSet.errors, metric: 'errors' } },
+          { label: 'Total Executions', value: totalRuns.toLocaleString(),         color: 'var(--status-resolved)', delta: cmpSet?.runs      && { ...cmpSet.runs,   metric: 'runs'   } },
+          { label: 'Avg Daily Errors', value: avgDailyErrors,                     color: 'var(--sev-warn)',      delta: null },
+          { label: 'Error Rate',       value: `${errorRate}%`,                    color: errorRateNum > 5 ? 'var(--sev-critical)' : 'var(--sev-info)', delta: cmpSet?.errorRate && { ...cmpSet.errorRate, metric: 'rate' } },
+        ];
+        return (
+          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+            {cards.map((k, i) => (
+              <div key={i} className="card kpi" style={{ ['--kpi-color']: k.color }}>
+                <div className="kpi-label">{k.label}</div>
+                <div className="kpi-value">{k.value}</div>
+                <div className="kpi-delta" style={{ marginTop: 6, minHeight: 16 }}>{renderDelta(k.delta)}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        );
+      })()}
       <div className="chart-grid">
         {/* Error trend chart */}
         <div className="card chart-card">
@@ -271,7 +298,25 @@ const AuditLogPage = () => {
           <h1 className="page-title">Audit log</h1>
           <div className="page-sub">{filtered.length} entries · tracking changes across the system</div>
         </div>
-        <button className="btn btn-ghost"><Icon name="download" size={14}/> Export</button>
+        <button className="btn btn-ghost" onClick={() => {
+          // Export current audit entries as CSV
+          const csv = [
+            ['Action', 'Detail', 'Actor', 'Timestamp', 'Category'].join(','),
+            ...filtered.map(e => [
+              `"${(e.action || '').replace(/"/g, '""')}"`,
+              `"${(e.detail || '').replace(/"/g, '""')}"`,
+              e.actor || '',
+              e.timestamp || '',
+              e.category || '',
+            ].join(',')),
+          ].join('\n');
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `errorlens-audit-${new Date().toISOString().slice(0,10)}.csv`;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }}><Icon name="download" size={14}/> Export</button>
       </div>
 
       <div className="filter-bar">
@@ -322,8 +367,17 @@ const AuditLogPage = () => {
 // ============ Runbooks Tab ============
 const RunbooksPage = () => {
   const [activeId, setActiveId] = React.useState(null);
+  const [liveRunbooks, setLiveRunbooks] = React.useState(null);
 
-  const runbooks = [
+  // Try to load from Supabase el_runbooks table (created by migration 003)
+  React.useEffect(() => {
+    if (!window.EL_SUPABASE) return;
+    window.EL_SUPABASE.get('el_runbooks', 'select=*&order=created_at.asc&limit=100')
+      .then(rows => { if (Array.isArray(rows) && rows.length > 0) setLiveRunbooks(rows.map(r => ({ id: r.id, title: r.title, category: r.category, severity: r.severity, steps: r.steps || [] }))); })
+      .catch(() => {}); // table may not exist yet — fall back to defaults
+  }, []);
+
+  const defaultRunbooks = [
     {
       id: 'rb_1', title: 'n8n Workflow Failure Recovery', category: 'Incident', severity: 'critical',
       steps: [
@@ -373,6 +427,7 @@ const RunbooksPage = () => {
       ],
     },
   ];
+  const runbooks = liveRunbooks || defaultRunbooks;
   const active = runbooks.find(r => r.id === activeId);
 
   return (
@@ -632,66 +687,4 @@ const NotificationsPage = () => {
     tab === 'unread' ? notifications.filter(n => !n.read) :
     notifications.filter(n => n.type === tab);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const critCount = notifications.filter(n => n.type === 'critical').length;
-  const relTime = (d) => {
-    if (!d) return '';
-    const mins = Math.floor((Date.now() - new Date(d)) / 60000);
-    if (mins < 1) return 'now';
-    if (mins < 60) return `${mins}m ago`;
-    if (mins < 1440) return `${Math.floor(mins/60)}h ago`;
-    return `${Math.floor(mins/1440)}d ago`;
-  };
-
-  return (
-    <div className="content">
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">Notifications</h1>
-          <div className="page-sub">{unreadCount} unread · {critCount} critical alerts</div>
-        </div>
-        <button className="btn btn-ghost">Mark all read</button>
-      </div>
-
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--card-hover)', borderRadius: 8, padding: 3, width: 'fit-content' }}>
-        {[
-          {id:'all', label:`All (${notifications.length})`},
-          {id:'unread', label:`Unread (${unreadCount})`},
-          {id:'critical', label:`Critical (${critCount})`},
-          {id:'resolved', label:'Resolved'},
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-                  style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: 'none', cursor: 'pointer',
-                           background: tab === t.id ? 'var(--bg-card)' : 'transparent',
-                           color: tab === t.id ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                           boxShadow: tab === t.id ? '0 1px 3px rgba(0,0,0,0.2)' : 'none' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
-            <Icon name="bell" size={32} style={{ opacity: 0.3, marginBottom: 12 }}/>
-            <div style={{ fontSize: 14 }}>No notifications in this category</div>
-          </div>
-        )}
-        {filtered.slice(0, 50).map(n => (
-          <div key={n.id} className="card" style={{ padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 12,
-            opacity: n.read ? 0.7 : 1, borderLeft: n.read ? undefined : `3px solid ${n.color}` }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${n.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-              <Icon name={n.icon} size={14} style={{ color: n.color }}/>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: n.read ? 400 : 600, color: 'var(--text-primary)' }}>{n.title}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.body}</div>
-            </div>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', flexShrink: 0 }}>{relTime(n.time)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-Object.assign(window, { AnalyticsPage, AuditLogPage, RunbooksPage, SLAMonitorPage, NotificationsPage });
+  const unreadCount = notifications.filter(n => !n.read).l

@@ -1,0 +1,37 @@
+name: ErrorLens — Ops crons
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # health-check every 15 min
+    - cron: "*/10 * * * *"   # alert-thresholds every 10 min (note: GH Actions debounces close crons; effectively ~every 15 min)
+    - cron: "0 4 * * *"      # data-retention nightly at 04:00 UTC
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which job to run"
+        type: choice
+        options: [health-check, data-retention, alert-thresholds]
+        default: health-check
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine job
+        id: job
+        run: |
+          # When scheduled, pick the job by the cron pattern. When dispatched, use the input.
+          if [ -n "${{ github.event.inputs.job }}" ]; then
+            echo "job=${{ github.event.inputs.job }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 4 * * *" ]; then
+            echo "job=data-retention" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "*/10 * * * *" ]; then
+            echo "job=alert-thresholds" >> "$GITHUB_OUTPUT"
+          else
+            echo "job=health-check" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run cron-ops
+        run: |
+          curl -sS -X POST \
+            "https://errorlens-deploy.vercel.app/api/cron-ops?job=${{ steps.job.outputs.job }}" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --fail-with-body

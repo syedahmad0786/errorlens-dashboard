@@ -166,6 +166,51 @@ async function _elFetchAndBuild() {
     if (member) ownerMap[wo.workflow_id] = { ...member, assigned_at: wo.assigned_at };
   });
 
+  // --- Period-over-period stats comparison (DoD / WoW / MoM) ---
+  function _sumRange(startISO, endISO) {
+    const inRange = dailyStats.filter(d => d.stat_date >= startISO && d.stat_date < endISO);
+    return {
+      errors: inRange.reduce((s, d) => s + (d.error_count || 0), 0),
+      runs:   inRange.reduce((s, d) => s + (d.total_runs || 0), 0),
+      success:inRange.reduce((s, d) => s + (d.success_count || 0), 0),
+    };
+  }
+  function _delta(curr, prev) {
+    if (!prev) return { abs: curr, pct: curr > 0 ? 100 : 0, direction: curr > 0 ? 'up' : 'flat' };
+    const abs = curr - prev;
+    const pct = prev === 0 ? (curr > 0 ? 100 : 0) : ((abs / prev) * 100);
+    return { abs, pct: parseFloat(pct.toFixed(1)), direction: abs > 0 ? 'up' : abs < 0 ? 'down' : 'flat' };
+  }
+  const _iso = (offsetDays) => new Date(Date.now() - offsetDays * 86400000).toISOString().slice(0, 10);
+  const tomorrow = _iso(-1);
+  const periods = {
+    today:    _sumRange(_iso(0), tomorrow),
+    yesterday:_sumRange(_iso(1), _iso(0)),
+    last7d:   _sumRange(_iso(7), tomorrow),
+    prev7d:   _sumRange(_iso(14), _iso(7)),
+    last30d:  _sumRange(_iso(30), tomorrow),
+    prev30d:  _sumRange(_iso(60), _iso(30)),
+  };
+  const statsComparison = {
+    ...periods,
+    dod: {
+      errors: _delta(periods.today.errors, periods.yesterday.errors),
+      runs:   _delta(periods.today.runs,   periods.yesterday.runs),
+    },
+    wow: {
+      errors: _delta(periods.last7d.errors, periods.prev7d.errors),
+      runs:   _delta(periods.last7d.runs,   periods.prev7d.runs),
+      errorRate: _delta(
+        periods.last7d.runs > 0 ? (periods.last7d.errors / periods.last7d.runs) * 100 : 0,
+        periods.prev7d.runs > 0 ? (periods.prev7d.errors / periods.prev7d.runs) * 100 : 0,
+      ),
+    },
+    mom: {
+      errors: _delta(periods.last30d.errors, periods.prev30d.errors),
+      runs:   _delta(periods.last30d.runs,   periods.prev30d.runs),
+    },
+  };
+
   window.EL_DATA = {
     events,
     timeline,
@@ -186,6 +231,8 @@ async function _elFetchAndBuild() {
     teamMembers,
     workflowOwners,
     ownerMap,
+    // Period-over-period
+    statsComparison,
   };
 
   // Dispatch event so React knows data is ready
@@ -194,65 +241,4 @@ async function _elFetchAndBuild() {
 }
 
 // --- Auto-refresh system ---
-window.EL_REFRESH_INTERVAL = 30000; // 30 seconds
-window._elRefreshTimer = null;
-window._elRefreshing = false;
-window._elLastRefresh = null;
-
-// Manual refresh â callable from anywhere
-window.EL_REFRESH = async () => {
-  if (window._elRefreshing) return window.EL_DATA;
-  window._elRefreshing = true;
-  try {
-    const data = await _elFetchAndBuild();
-    window._elLastRefresh = Date.now();
-    console.log('[ErrorLens] Data refreshed at', new Date().toLocaleTimeString());
-    return data;
-  } catch (err) {
-    console.error('[ErrorLens] Refresh failed:', err);
-    return window.EL_DATA;
-  } finally {
-    window._elRefreshing = false;
-  }
-};
-
-// Start auto-refresh loop
-window.EL_START_AUTOREFRESH = (intervalMs) => {
-  if (window._elRefreshTimer) clearInterval(window._elRefreshTimer);
-  const ms = intervalMs || window.EL_REFRESH_INTERVAL;
-  window._elRefreshTimer = setInterval(() => window.EL_REFRESH(), ms);
-  console.log(`[ErrorLens] Auto-refresh started (every ${ms/1000}s)`);
-};
-
-window.EL_STOP_AUTOREFRESH = () => {
-  if (window._elRefreshTimer) {
-    clearInterval(window._elRefreshTimer);
-    window._elRefreshTimer = null;
-    console.log('[ErrorLens] Auto-refresh stopped');
-  }
-};
-
-// --- Webhook push receiver (for n8n/Make direct pushes) ---
-// n8n/Make can call: POST /rest/v1/el_errors with error data
-// This function handles incoming webhook errors and merges into live data
-window.EL_PUSH_ERROR = async (errorData) => {
-  try {
-    // Insert into Supabase
-    await window.EL_SUPABASE.post('el_errors', errorData);
-    // Trigger a refresh to pick up the new error
-    await window.EL_REFRESH();
-    return { success: true };
-  } catch (err) {
-    console.error('[ErrorLens] Push error failed:', err);
-    return { success: false, error: err.message };
-  }
-};
-
-// Initial load
-window.EL_DATA_LOADING = (async () => {
-  const data = await _elFetchAndBuild();
-  window._elLastRefresh = Date.now();
-  // Start auto-refresh after initial load
-  window.EL_START_AUTOREFRESH();
-  return data;
-})();
+window.EL_REFRESH_INTERVAL = 60000; // 60 sec

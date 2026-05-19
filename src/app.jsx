@@ -55,6 +55,7 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
     if (route === 'events') return ['Monitoring', 'Error feed'];
     if (route === 'event') return ['Monitoring', 'Error feed', openEvent?.id || 'Detail'];
     if (route === 'analytics') return ['Monitoring', 'Analytics'];
+    if (route === 'intelligence') return ['Monitoring', 'Intelligence'];
     if (route === 'sla') return ['Monitoring', 'SLA Monitor'];
     if (route === 'alerts') return ['Monitoring', 'Alert rules'];
     if (route === 'notifications') return ['Monitoring', 'Notifications'];
@@ -111,6 +112,7 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
             {route === 'events'      && <FeedPage onOpenEvent={goEvent}/>}
             {route === 'event'       && <EventDetailPage event={openEvent || window.EL_DATA.events[0]} onBack={() => setRoute('events')}/>}
             {route === 'analytics'   && <AnalyticsPage/>}
+            {route === 'intelligence'&& <IntelligencePage/>}
             {route === 'sla'         && <SLAMonitorPage/>}
             {route === 'alerts'      && <AlertsPage onOpenSheet={() => setSheetOpen(true)}/>}
             {route === 'notifications'&& <NotificationsPage/>}
@@ -153,9 +155,4 @@ function ErrorLensTweaksPanel({ tweaks, setTweak }) {
         onChange={(v) => setTweak('timeline', v)}/>
       <TweakRadio label="Severity" value={tweaks.severity}
         options={[{value:'bar',label:'Bar'},{value:'donut',label:'Donut'},{value:'multiples',label:'Multi'}]}
-        onChange={(v) => setTweak('severity', v)}/>
-    </TweaksPanel>
-  );
-}
-
-Object.assign(window, { ErrorLensApp, ErrorLensTweaksPanel, TWEAK_DEFAULTS });
+        onChange={(v) =>

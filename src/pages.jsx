@@ -10,6 +10,7 @@ const NAV = [
   { id: 'workflows',label: 'Workflows',    icon: 'workflow', group: 'Monitoring' },
   { id: 'events',   label: 'Error feed',   icon: 'feed',  group: 'Monitoring' },
   { id: 'analytics',label: 'Analytics',    icon: 'chart', group: 'Monitoring' },
+  { id: 'intelligence', label: 'Intelligence', icon: 'sparkles', group: 'Monitoring' },
   { id: 'sla',      label: 'SLA Monitor',  icon: 'shield',group: 'Monitoring' },
   { id: 'alerts',   label: 'Alert rules',  icon: 'bell',  group: 'Monitoring' },
   { id: 'notifications', label: 'Notifications', icon: 'bell', group: 'Monitoring' },
@@ -446,6 +447,173 @@ const FeedPage = ({ onOpenEvent }) => {
   );
 };
 
+// ============ Execution Drill-Down (sub-tab body) ============
+const ExecutionDrillDown = ({ event, execution, fmtDate, fmtDuration }) => {
+  const [payloadOpen, setPayloadOpen] = useState(false);
+  const raw = window.EL_RAW || {};
+  // The new webhook stores the original payload at el_errors.metadata.raw_payload
+  // Find the source error record to pull metadata
+  const errRow = (raw.errors || []).find(e => e.id === event.id || e.execution_id === event.execId);
+  const meta = errRow?.metadata || {};
+  const rawPayload = meta.raw_payload || null;
+  const platformUrl = meta.platform_url || null;
+  const stack = meta.stack || null;
+
+  // Derive a node timeline. For n8n we may have execution.runData per node;
+  // for now we synthesize a 3-step timeline (started → failed at node → stopped).
+  const timeline = [];
+  if (execution) {
+    timeline.push({ label: 'Execution started', node: '—', time: execution.started_at, status: 'success' });
+    if (execution.error_node) {
+      timeline.push({ label: 'Failed at node', node: execution.error_node, time: execution.finished_at, status: 'error' });
+    }
+    timeline.push({ label: 'Execution stopped', node: '—', time: execution.finished_at, status: execution.status === 'error' ? 'error' : 'success' });
+  }
+
+  // Retry history — pull executions for same workflow_id that came AFTER this one
+  // and share the same error_node. Best-effort proxy until we add a retry_log table.
+  const retries = execution && event ? (raw.executions || [])
+    .filter(e => e.workflow_id === event.workflowId && e.id !== execution.id && new Date(e.started_at) > new Date(execution.started_at))
+    .slice(0, 5) : [];
+
+  return (
+    <>
+      {/* Header strip with open-in-platform deep link */}
+      <div className="card" style={{ marginBottom: 16, padding: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Execution</span>
+          <code style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{event.execId || '—'}</code>
+        </div>
+        {platformUrl ? (
+          <a href={platformUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: 12 }}>
+            <Icon name="external" size={12}/> Open in {event.platform}
+          </a>
+        ) : (
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>No platform link available</span>
+        )}
+      </div>
+
+      {/* Execution metadata grid */}
+      <div className="card" style={{ marginBottom: 16, padding: 20 }}>
+        <div className="card-title" style={{ marginBottom: 16 }}>Execution details</div>
+        {execution ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {[
+              { label: 'Execution ID', value: execution.id, mono: true },
+              { label: 'Status', value: execution.status },
+              { label: 'Started', value: fmtDate(execution.started_at) },
+              { label: 'Finished', value: fmtDate(execution.finished_at) },
+              { label: 'Duration', value: fmtDuration(execution.duration_ms), big: true },
+              { label: 'Platform', value: execution.platform_type },
+            ].map((f, i) => (
+              <div key={i} style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{f.label}</div>
+                <div style={{ fontSize: f.big ? 18 : 13, fontWeight: f.big ? 700 : 400, color: 'var(--text-primary)', fontFamily: f.mono ? 'var(--font-mono)' : 'var(--font-sans)' }}>{f.value}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+            No execution data found for ID: {event.execId}
+          </div>
+        )}
+      </div>
+
+      {/* Node timeline */}
+      {timeline.length > 0 && (
+        <div className="card" style={{ marginBottom: 16, padding: 20 }}>
+          <div className="card-title" style={{ marginBottom: 16 }}>Node timeline</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {timeline.map((t, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '8px 12px', background: 'var(--card-hover)', borderRadius: 6, borderLeft: `3px solid ${t.status === 'error' ? 'var(--sev-error)' : 'var(--status-resolved)'}` }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.status === 'error' ? 'var(--sev-error)' : 'var(--status-resolved)', flexShrink: 0 }}/>
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{t.label}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{t.node !== '—' && <code style={{ fontSize: 11 }}>{t.node}</code>} · {fmtDate(t.time)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Error in execution */}
+      {execution && (execution.error_message || execution.error_node) && (
+        <div className="card" style={{ marginBottom: 16, padding: 20 }}>
+          <div className="card-title" style={{ marginBottom: 12 }}>Error in execution</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {execution.error_node && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 80 }}>Failed node:</span>
+                <code style={{ fontSize: 12, padding: '3px 8px', background: 'var(--sev-critical-bg, rgba(239,68,68,0.1))', color: 'var(--sev-critical)', borderRadius: 4 }}>{execution.error_node}</code>
+              </div>
+            )}
+            {execution.error_type && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 80 }}>Error type:</span>
+                <code style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{execution.error_type}</code>
+              </div>
+            )}
+            {execution.error_message && (
+              <div className="code-block" style={{ marginTop: 8 }}>
+                <div className="code-head"><span>error output</span></div>
+                <div className="code-body">
+                  <div className="code-content" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{execution.error_message}</div>
+                </div>
+              </div>
+            )}
+            {stack && (
+              <details style={{ marginTop: 8 }}>
+                <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--text-tertiary)' }}>Stack trace</summary>
+                <pre style={{ marginTop: 8, padding: 12, background: 'var(--card-hover)', borderRadius: 6, fontSize: 11, overflowX: 'auto', color: 'var(--text-secondary)' }}>{stack}</pre>
+              </details>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Raw payload viewer */}
+      {rawPayload && (
+        <div className="card" style={{ marginBottom: 16, padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div className="card-title" style={{ margin: 0 }}>Raw webhook payload</div>
+            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setPayloadOpen(o => !o)}>
+              {payloadOpen ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {payloadOpen && (
+            <pre style={{ padding: 12, background: 'var(--card-hover)', borderRadius: 6, fontSize: 11, overflowX: 'auto', color: 'var(--text-secondary)', maxHeight: 400 }}>
+              {JSON.stringify(rawPayload, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
+
+      {/* Retry history */}
+      <div className="card" style={{ padding: 20 }}>
+        <div className="card-title" style={{ marginBottom: 12 }}>Retry history</div>
+        {retries.length === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '8px 0' }}>No subsequent executions of this workflow recorded yet.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {retries.map(r => (
+              <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 1fr 120px', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 12, alignItems: 'center' }}>
+                <code style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.id}</code>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.status === 'success' ? 'var(--status-resolved)' : 'var(--sev-error)' }}/>
+                  {r.status}
+                </span>
+                <span style={{ color: 'var(--text-tertiary)' }}>{fmtDate(r.started_at)}</span>
+                <span className="mono">{fmtDuration(r.duration_ms)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
 // ============ Event Detail ============
 const EventDetailPage = ({ event, onBack }) => {
   const [resolving, setResolving] = useState(false);
@@ -559,76 +727,7 @@ const EventDetailPage = ({ event, onBack }) => {
 
           {/* Execution Drill-Down Tab */}
           {detailTab === 'execution' && (
-            <>
-              <div className="card" style={{ marginBottom: 20, padding: 20 }}>
-                <div className="card-title" style={{ marginBottom: 16 }}>Execution details</div>
-                {execution ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Execution ID</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{execution.id}</div>
-                    </div>
-                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Status</div>
-                      <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: execution.status === 'success' ? 'var(--status-resolved)' : 'var(--sev-error)' }}/>
-                        <span style={{ color: 'var(--text-primary)' }}>{execution.status}</span>
-                      </div>
-                    </div>
-                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Started</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtDate(execution.started_at)}</div>
-                    </div>
-                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Finished</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtDate(execution.finished_at)}</div>
-                    </div>
-                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Duration</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{fmtDuration(execution.duration_ms)}</div>
-                    </div>
-                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Platform</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <PlatformIcon p={execution.platform_type} size={16}/>{execution.platform_type}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                    No execution data found for ID: {event.execId}
-                  </div>
-                )}
-              </div>
-
-              {execution && (execution.error_message || execution.error_node) && (
-                <div className="card" style={{ marginBottom: 20, padding: 20 }}>
-                  <div className="card-title" style={{ marginBottom: 12 }}>Error in execution</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {execution.error_node && (
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 80 }}>Failed node:</span>
-                        <code style={{ fontSize: 12, padding: '3px 8px', background: 'var(--sev-critical-bg, rgba(239,68,68,0.1))', color: 'var(--sev-critical)', borderRadius: 4 }}>{execution.error_node}</code>
-                      </div>
-                    )}
-                    {execution.error_type && (
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 80 }}>Error type:</span>
-                        <code style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{execution.error_type}</code>
-                      </div>
-                    )}
-                    {execution.error_message && (
-                      <div className="code-block" style={{ marginTop: 8 }}>
-                        <div className="code-head"><span>error output</span></div>
-                        <div className="code-body">
-                          <div className="code-content" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{execution.error_message}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
+            <ExecutionDrillDown event={event} execution={execution} fmtDate={fmtDate} fmtDuration={fmtDuration}/>
           )}
 
           {/* Workflow History Tab */}
@@ -687,80 +786,4 @@ const EventDetailPage = ({ event, onBack }) => {
               <div className="lifecycle-item">
                 <div className="lifecycle-dot done"><Icon name="check" size={12} strokeWidth={2.5}/></div>
                 <div>
-                  <div className="lifecycle-title">Created</div>
-                  <div className="lifecycle-meta">System Â· {fmtDate(event.fullTime)}</div>
-                </div>
-              </div>
-              <div className="lifecycle-item">
-                <div className={`lifecycle-dot ${event.status !== 'open' ? 'done' : 'active'}`}>
-                  {event.status !== 'open' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '2'}
-                </div>
-                <div>
-                  <div className="lifecycle-title">Acknowledged</div>
-                  <div className="lifecycle-meta">{event.status === 'open' ? 'Pending' : (owner ? owner.name : 'Team') + ' Â· acknowledged'}</div>
-                </div>
-              </div>
-              <div className="lifecycle-item">
-                <div className={`lifecycle-dot ${event.status === 'resolved' ? 'done' : ''}`}>
-                  {event.status === 'resolved' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '3'}
-                </div>
-                <div>
-                  <div className="lifecycle-title">Resolved</div>
-                  <div className="lifecycle-meta">{event.status === 'resolved' ? 'Resolved' : 'â'}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-title" style={{ marginBottom: 12 }}>Triggered alert rules</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {D.alertRules.filter(r => r.on).slice(0,3).map(r => (
-                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{r.name}</span>
-                  <span style={{ color: 'var(--text-tertiary)' }}>fired</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-title" style={{ marginBottom: 12 }}>
-              Similar errors (same type)
-              <span style={{ color: 'var(--text-tertiary)', float: 'right' }}>{similarByType.length}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {similarByType.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No similar errors found</div>}
-              {similarByType.slice(0, 5).map(e => (
-                <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 12 }}>
-                  <SeverityDot sev={e.severity} size={6}/>
-                  <span className="mono" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-secondary)' }}>{e.workflow}</span>
-                  <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{e.timestamp}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-title" style={{ marginBottom: 12 }}>
-              Same workflow errors
-              <span style={{ color: 'var(--text-tertiary)', float: 'right' }}>{similarByWorkflow.length}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {similarByWorkflow.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No other errors for this workflow</div>}
-              {similarByWorkflow.slice(0, 5).map(e => (
-                <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 12 }}>
-                  <SeverityDot sev={e.severity} size={6}/>
-                  <span className="mono" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-secondary)' }}>{e.message.substring(0, 50)}</span>
-                  <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{e.timestamp}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-Object.assign(window, { Sidebar, Topbar, OverviewPage, FeedPage, EventDetailPage });
+                  <

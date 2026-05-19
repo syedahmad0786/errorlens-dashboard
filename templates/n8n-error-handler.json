@@ -1,0 +1,62 @@
+{
+  "name": "ErrorLens — Central Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://errorlens-deploy.vercel.app/api/webhook",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "el_webhook_2025" },
+            { "name": "x-platform", "value": "n8n" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow: { id: $json.workflow.id, name: $json.workflow.name }, execution: { id: $json.execution.id, startedAt: $json.execution.url ? $json.execution.startedAt : $now.toISO(), stoppedAt: $now.toISO(), url: $json.execution.url }, error: { name: $json.execution.error?.name || 'N8N_ERROR', message: $json.execution.error?.message || 'Unknown error', node: $json.execution.error?.node || null, stack: $json.execution.error?.stack || null }, n8n_base_url: 'https://n8n.aimanagingservices.com', severity: ($json.execution.error?.name || '').toLowerCase().includes('credential') ? 'critical' : 'error' }) }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "2",
+      "name": "POST to ErrorLens",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#errors",
+        "text": "=:rotating_light: *{{ $('Error Trigger').item.json.workflow.name }}* failed\nNode: `{{ $('Error Trigger').item.json.execution.error?.node || 'unknown' }}`\nError: {{ $('Error Trigger').item.json.execution.error?.message }}\n<{{ $('Error Trigger').item.json.execution.url }}|Open in n8n>",
+        "otherOptions": {}
+      },
+      "id": "3",
+      "name": "Slack Fallback",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [720, 460],
+      "credentials": { "slackApi": { "id": "REPLACE_ME", "name": "Slack" } }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          { "node": "POST to ErrorLens", "type": "main", "index": 0 },
+          { "node": "Slack Fallback", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "errorlens" }]
+}

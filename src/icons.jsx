@@ -12,6 +12,11 @@ const Icon = ({ name, size = 16, className = '', strokeWidth = 1.75 }) => {
     workflow:    <><circle cx="5" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="20" r="2"/><path d="M7 6h5l5-0M12 14v4M7 7l3 3M17 7l-3 3"/></>,
     search:      <><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></>,
     download:    <><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></>,
+    external:    <><path d="M14 3h7v7M21 3l-9 9M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/></>,
+    sparkles:    <><path d="M12 3l1.5 3.5L17 8l-3.5 1.5L12 13l-1.5-3.5L7 8l3.5-1.5z"/><path d="M19 14l1 2.5L22.5 18l-2.5 1L19 21.5l-1-2.5L15.5 18l2.5-1z"/></>,
+    brain:       <><path d="M9 4a3 3 0 0 0-3 3v0a3 3 0 0 0-3 3v1a3 3 0 0 0 1 2.2V14a3 3 0 0 0 3 3h1v2a3 3 0 0 0 3 3h0V4z"/><path d="M15 4a3 3 0 0 1 3 3v0a3 3 0 0 1 3 3v1a3 3 0 0 1-1 2.2V14a3 3 0 0 1-3 3h-1v2a3 3 0 0 1-3 3h0V4z"/></>,
+    trendingUp:  <><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></>,
+    trendingDown:<><path d="m3 7 6 6 4-4 8 8"/><path d="M14 17h7v-7"/></>,
     chevronR:    <><path d="m9 6 6 6-6 6"/></>,
     chevronL:    <><path d="m15 6-6 6 6 6"/></>,
     chevronD:    <><path d="m6 9 6 6 6-6"/></>,
@@ -414,20 +419,4 @@ const SeverityBreakdown = ({ counts, mode = 'bar' }) => {
       <div className="sev-bar">
         {items.map(it => (
           <div key={it.sev} title={`${it.label}: ${it.n}`}
-               style={{ flex: it.n, background: it.color, minWidth: it.n ? 4 : 0 }}/>
-        ))}
-      </div>
-      <ul className="sev-legend" style={{ listStyle: 'none', padding: 0, margin: '16px 0 0' }}>
-        {items.map(it => (
-          <li key={it.sev} className="sev-legend-row">
-            <SeverityIcon sev={it.sev} size={11}/>
-            <span className="name">{it.label}</span>
-            <span className="count">{it.n} Â· {Math.round(it.n/total*100)}%</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
-Object.assign(window, { Icon, ErrorLensLogo, PlatformIcon, SeverityIcon, SeverityDot, StatusIndicator, Badge, Sparkline, TimelineChart, SeverityBreakdown });
+               style={{ flex: it.n, backgr

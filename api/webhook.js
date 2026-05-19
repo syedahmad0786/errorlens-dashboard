@@ -1,104 +1,64 @@
-// ErrorLens — Webhook receiver for n8n / Make.com / custom HTTP error ingestion
-// POST /api/webhook → inserts error into el_errors + updates el_workflows stats
-// Validates API key via x-api-key header or ?key= query param
+// ErrorLens — Universal webhook receiver for n8n / Make.com / custom HTTP error ingestion
+// POST /api/webhook → inserts error into el_errors + el_executions + fans out to Slack
+// Validates API key via x-api-key header or ?key= query param.
+// Supports platform-specific payload shapes (n8n Error Trigger node, Make.com Error Handler).
 
 const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co/rest/v1';
 const SB_KEY = 'sb_publishable_r5FDMEL2kufqPFtAjj9HKA_0tPJXC_4';
 const WEBHOOK_SECRET = process.env.ERRORLENS_WEBHOOK_SECRET || 'el_webhook_2025';
+const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || ''; // optional — silent no-op if unset
 
-module.exports = async (req, res) => {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+// ──────────────────────────────────────────────────────────────────────────
+// Platform-specific payload normalizers
+// ──────────────────────────────────────────────────────────────────────────
+function normalizeN8nPayload(raw) {
+  // n8n Error Trigger node sends: { execution, workflow, error, ... }
+  // Also: when forwarded by our central Error Handler workflow, the payload may
+  // already be flattened. Handle both shapes.
+  const wf = raw.workflow || {};
+  const exec = raw.execution || {};
+  const err = raw.error || {};
+  return {
+    workflow_id: raw.workflow_id || raw.workflowId || wf.id || null,
+    workflow_name: raw.workflow_name || wf.name || null,
+    execution_id: raw.execution_id || raw.executionId || exec.id || null,
+    platform_type: 'n8n',
+    error_message: err.message || raw.error_message || raw.message || 'Unknown n8n error',
+    error_type: err.name || raw.error_type || raw.type || 'N8N_ERROR',
+    error_node: err.node?.name || raw.error_node || raw.node || raw.nodeName || null,
+    severity: raw.severity || (err.name?.toLowerCase().includes('credential') ? 'critical' : 'error'),
+    occurred_at: exec.startedAt || raw.occurred_at || raw.timestamp || new Date().toISOString(),
+    started_at: exec.startedAt || raw.started_at || null,
+    finished_at: exec.stoppedAt || raw.finished_at || null,
+    duration_ms: raw.duration_ms || (exec.stoppedAt && exec.startedAt ? new Date(exec.stoppedAt) - new Date(exec.startedAt) : null),
+    metadata: { raw_payload: raw, stack: err.stack || null, platform_url: wf.id ? `${raw.n8n_base_url || ''}/workflow/${wf.id}/executions/${exec.id || ''}`.replace(/\/+$/, '') : null },
+  };
+}
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+function normalizeMakePayload(raw) {
+  // Make.com Error Handler / Webhook sends: { scenario, execution, error, ... }
+  // Or our wrapper module may flatten before posting.
+  const scn = raw.scenario || {};
+  const exec = raw.execution || {};
+  const err = raw.error || {};
+  return {
+    workflow_id: raw.workflow_id || raw.scenarioId || scn.id || null,
+    workflow_name: raw.workflow_name || scn.name || null,
+    execution_id: raw.execution_id || exec.id || null,
+    platform_type: 'make',
+    error_message: err.message || raw.error_message || raw.message || 'Unknown Make.com error',
+    error_type: err.type || raw.error_type || raw.type || 'MAKE_ERROR',
+    error_node: err.module?.name || raw.error_node || raw.moduleName || raw.module || null,
+    severity: raw.severity || 'error',
+    occurred_at: exec.startedAt || raw.occurred_at || raw.timestamp || new Date().toISOString(),
+    started_at: exec.startedAt || raw.started_at || null,
+    finished_at: exec.endedAt || raw.finished_at || null,
+    duration_ms: raw.duration_ms || (exec.endedAt && exec.startedAt ? new Date(exec.endedAt) - new Date(exec.startedAt) : null),
+    metadata: { raw_payload: raw, dlq: raw.dlq || null, platform_url: scn.id ? `https://make.com/organization/-/scenario/${scn.id}` : null },
+  };
+}
 
-  // Validate API key
-  const apiKey = req.headers['x-api-key'] || req.query?.key;
-  if (apiKey !== WEBHOOK_SECRET) {
-    return res.status(401).json({ error: 'Invalid API key' });
-  }
-
-  try {
-    const body = req.body;
-    if (!body) return res.status(400).json({ error: 'Empty body' });
-
-    // Support batch (array) or single error
-    const errors = Array.isArray(body) ? body : [body];    const results = [];
-
-    for (const err of errors) {
-      // Map incoming fields to el_errors schema
-      const record = {
-        workflow_id: err.workflow_id || err.workflowId || null,
-        execution_id: err.execution_id || err.executionId || null,
-        platform_type: err.platform_type || err.platform || 'n8n',
-        error_message: err.error_message || err.message || err.error || 'Unknown error',
-        error_type: err.error_type || err.type || err.code || 'UNKNOWN',
-        error_node: err.error_node || err.node || err.nodeName || null,
-        severity: err.severity || 'error',
-        occurred_at: err.occurred_at || err.timestamp || new Date().toISOString(),
-        is_resolved: false,
-        metadata: err.metadata || null,
-      };
-
-      // Insert into el_errors
-      const insertRes = await fetch(`${SB_URL}/el_errors`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: SB_KEY,
-          Authorization: `Bearer ${SB_KEY}`,
-          Prefer: 'return=representation',
-        },
-        body: JSON.stringify(record),
-      });
-      if (!insertRes.ok) {
-        const errBody = await insertRes.text();
-        results.push({ success: false, error: errBody, input: err });
-        continue;
-      }
-
-      const inserted = await insertRes.json();
-      results.push({ success: true, id: inserted[0]?.id });
-
-      // Also insert execution record if we have enough data
-      if (record.execution_id && record.workflow_id) {
-        const execRecord = {
-          id: record.execution_id,
-          workflow_id: record.workflow_id,
-          platform_type: record.platform_type,
-          status: 'error',
-          started_at: err.started_at || record.occurred_at,
-          finished_at: err.finished_at || record.occurred_at,
-          duration_ms: err.duration_ms || err.duration || null,
-          error_message: record.error_message,
-          error_node: record.error_node,
-          error_type: record.error_type,
-        };
-        await fetch(`${SB_URL}/el_executions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: SB_KEY,
-            Authorization: `Bearer ${SB_KEY}`,
-            Prefer: 'resolution=merge-duplicates',
-          },
-          body: JSON.stringify(execRecord),
-        }).catch(() => {}); // Best-effort
-      }
-    }
-
-    const successCount = results.filter(r => r.success).length;
-    return res.status(successCount > 0 ? 201 : 400).json({
-      received: errors.length,
-      inserted: successCount,
-      failed: errors.length - successCount,
-      results,
-    });
-  } catch (e) {
-    console.error('[ErrorLens webhook]', e);
-    return res.status(500).json({ error: 'Internal server error', message: e.message });
-  }
-};
+function normalizeGenericPayload(raw) {
+  // Fallback for legacy / custom posters — preserve existing aliasing
+  return {
+    workflow_id: raw.workflow_i

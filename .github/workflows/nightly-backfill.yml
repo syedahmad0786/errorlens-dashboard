@@ -1,0 +1,16 @@
+name: ErrorLens — Nightly stats backfill
+on:
+  schedule:
+    - cron: "15 3 * * *" # 03:15 UTC nightly
+  workflow_dispatch: {}
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit backfill endpoint
+        run: |
+          curl -sS -X POST \
+            "https://errorlens-deploy.vercel.app/api/cron-backfill-stats?days=30" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --fail-with-body
