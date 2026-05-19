@@ -69,6 +69,11 @@ const WorkflowsPage = () => {
     }
     if (sortBy === 'errors') wfs.sort((a, b) => (b.total_errors || 0) - (a.total_errors || 0));
     else if (sortBy === 'executions') wfs.sort((a, b) => (b.total_executions || 0) - (a.total_executions || 0));
+    else if (sortBy === 'success_rate') wfs.sort((a, b) => {
+      const rA = (a.total_executions || 0) > 0 ? ((a.total_executions - (a.total_errors || 0)) / a.total_executions * 100) : -1;
+      const rB = (b.total_executions || 0) > 0 ? ((b.total_executions - (b.total_errors || 0)) / b.total_executions * 100) : -1;
+      return rA - rB; // lowest first so you see what needs fixing
+    });
     else if (sortBy === 'nodes') wfs.sort((a, b) => (b.node_count || 0) - (a.node_count || 0));
     else if (sortBy === 'owner') wfs.sort((a, b) => (ownerMap[a.id]?.name || 'zzz').localeCompare(ownerMap[b.id]?.name || 'zzz'));
     else wfs.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -149,6 +154,7 @@ const WorkflowsPage = () => {
               <option value="name">Sort: Name</option>
               <option value="errors">Sort: Errors</option>
               <option value="executions">Sort: Executions</option>
+              <option value="success_rate">Sort: Success Rate</option>
               <option value="owner">Sort: Owner</option>
             </select>
 
@@ -220,6 +226,11 @@ const WorkflowsPage = () => {
         .wf-stats { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
         .wf-stat { font-size: 11px; color: var(--text-secondary); }
         .wf-stat b { color: var(--text-primary); font-weight: 600; }
+        .wf-success-rate { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+        .wf-success-rate.excellent { background: #05966918; color: #059669; }
+        .wf-success-rate.good { background: #f5952518; color: #d97706; }
+        .wf-success-rate.poor { background: #ef444418; color: #ef4444; }
+        .wf-success-rate.nodata { background: var(--surface-2); color: var(--text-secondary); }
         .wf-apps { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
         .wf-app-tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border); }
         .wf-status-badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
@@ -662,12 +673,25 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
       </div>
 
       <div className="wf-stats">
-        <div className="wf-stat"><b>{wf.total_executions || 0}</b> runs</div>
-        <div className="wf-stat" style={{ color: (wf.total_errors || 0) > 0 ? 'var(--sev-error)' : undefined }}>
-          <b>{wf.total_errors || 0}</b> errors
-        </div>
-        <div className="wf-stat"><b>{wf.total_success || 0}</b> success</div>
-        {wf.error_rate > 0 && <div className="wf-stat"><b>{wf.error_rate}%</b> error rate</div>}
+        {(() => {
+          const runs = wf.total_executions || 0;
+          const errs = wf.total_errors || 0;
+          const succ = wf.total_success || 0;
+          const rate = runs > 0 ? ((runs - errs) / runs * 100) : -1;
+          const rateClass = rate < 0 ? 'nodata' : rate >= 97 ? 'excellent' : rate >= 90 ? 'good' : 'poor';
+          const rateLabel = rate < 0 ? 'N/A' : rate % 1 === 0 ? rate + '%' : rate.toFixed(1) + '%';
+          const rateIcon = rate >= 97 ? '✔' : rate >= 90 ? '⚠' : rate >= 0 ? '✖' : '—';
+          return (
+            <React.Fragment>
+              <span className={`wf-success-rate ${rateClass}`}>{rateIcon} {rateLabel}</span>
+              <div className="wf-stat"><b>{runs}</b> runs</div>
+              <div className="wf-stat" style={{ color: errs > 0 ? 'var(--sev-error)' : undefined }}>
+                <b>{errs}</b> errors
+              </div>
+              <div className="wf-stat"><b>{succ}</b> success</div>
+            </React.Fragment>
+          );
+        })()}
       </div>
 
       {(wf.apps_used || []).length > 0 && (
