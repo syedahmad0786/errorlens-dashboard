@@ -1,4 +1,4 @@
-// ErrorLens — shared icons & UI primitives
+// ErrorLens â shared icons & UI primitives
 // Pure SVG icons, no external dep
 const Icon = ({ name, size = 16, className = '', strokeWidth = 1.75 }) => {
   const paths = {
@@ -87,31 +87,29 @@ const ErrorLensLogo = ({ size = 28 }) => (
   </svg>
 );
 
-// Platform icons — proper SVG logos for n8n, Make, Zapier, etc.
+// Platform icons â proper SVG logos for n8n, Make, Zapier, etc.
 const PlatformIcon = ({ p, size = 20 }) => {
   const platforms = {
     n8n: {
       color: '#EA4B71',
       bg: 'rgba(234,75,113,0.12)',
       render: (s) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path clipRule="evenodd" d="M24 8.4c0 1.325-1.102 2.4-2.462 2.4-1.146 0-2.11-.765-2.384-1.8h-3.436c-.602 0-1.115.424-1.214 1.003l-.101.592a2.38 2.38 0 01-.8 1.405c.412.354.704.844.8 1.405l.1.592A1.222 1.222 0 0015.719 15h.975c.273-1.035 1.237-1.8 2.384-1.8 1.36 0 2.461 1.075 2.461 2.4S20.436 18 19.078 18c-1.147 0-2.11-.765-2.384-1.8h-.975c-1.204 0-2.23-.848-2.428-2.005l-.101-.592a1.222 1.222 0 00-1.214-1.003H10.97c-.308.984-1.246 1.7-2.356 1.7-1.11 0-2.048-.716-2.355-1.7H4.817c-.308.984-1.246 1.7-2.355 1.7C1.102 14.3 0 13.225 0 11.9s1.102-2.4 2.462-2.4c1.183 0 2.172.815 2.408 1.9h1.337c.236-1.085 1.225-1.9 2.408-1.9 1.184 0 2.172.815 2.408 1.9h.952c.601 0 1.115-.424 1.213-1.003l.102-.592c.198-1.157 1.225-2.005 2.428-2.005h3.436c.274-1.035 1.238-1.8 2.384-1.8C22.898 6 24 7.075 24 8.4zm-1.23 0c0 .663-.552 1.2-1.232 1.2-.68 0-1.23-.537-1.23-1.2 0-.663.55-1.2 1.23-1.2.68 0 1.231.537 1.231 1.2zM2.461 13.1c.68 0 1.23-.537 1.23-1.2 0-.663-.55-1.2-1.23-1.2-.68 0-1.231.537-1.231 1.2 0 .663.55 1.2 1.23 1.2zm6.153 0c.68 0 1.231-.537 1.231-1.2 0-.663-.55-1.2-1.23-1.2-.68 0-1.231.537-1.231 1.2 0 .663.55 1.2 1.23 1.2zm10.462 3.7c.68 0 1.23-.537 1.23-1.2 0-.663-.55-1.2-1.23-1.2-.68 0-1.23.537-1.23 1.2 0 .663.55 1.2 1.23 1.2z" fill="#EA4B71" fillRule="evenodd"/>
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <circle cx="6" cy="12" r="2.5" stroke="#EA4B71" strokeWidth="1.5" fill="rgba(234,75,113,0.15)"/>
+          <circle cx="18" cy="7" r="2.5" stroke="#EA4B71" strokeWidth="1.5" fill="rgba(234,75,113,0.15)"/>
+          <circle cx="18" cy="17" r="2.5" stroke="#EA4B71" strokeWidth="1.5" fill="rgba(234,75,113,0.15)"/>
+          <path d="M8.5 12l7-4.5M8.5 12l7 4.5" stroke="#EA4B71" strokeWidth="1.5" strokeLinecap="round"/>
         </svg>
       ),
     },
     make: {
-      color: '#6D00CC',
-      bg: 'rgba(109,0,204,0.12)',
+      color: '#6D29D9',
+      bg: 'rgba(109,41,217,0.12)',
       render: (s) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient gradientUnits="userSpaceOnUse" id="make-g0" x1="1.5" x2="12" y1="19.5" y2="0"><stop stopColor="#F0F"/><stop offset=".17" stopColor="#E90CF9"/><stop offset=".54" stopColor="#C023ED"/><stop offset=".73" stopColor="#B02DE9"/><stop offset="1" stopColor="#B02DE9"/></linearGradient>
-            <linearGradient gradientUnits="userSpaceOnUse" id="make-g1" x1="0" x2="24" y1="24" y2="0"><stop stopColor="#B02DE9"/><stop offset=".02" stopColor="#B02DE9"/><stop offset=".8" stopColor="#6D00CC"/><stop offset="1" stopColor="#6D00CC"/></linearGradient>
-            <linearGradient gradientUnits="userSpaceOnUse" id="make-g2" x1="0" x2="24" y1="24" y2="0"><stop stopColor="#F0F"/><stop offset=".02" stopColor="#F0F"/><stop offset=".09" stopColor="#E90CF9"/><stop offset=".23" stopColor="#C023ED"/><stop offset=".3" stopColor="#B02DE9"/><stop offset=".42" stopColor="#A42BE3"/><stop offset=".63" stopColor="#8626D5"/><stop offset=".85" stopColor="#6021C3"/><stop offset="1" stopColor="#6021C3"/></linearGradient>
-          </defs>
-          <path d="M6.989 4.036L.062 17.818a.577.577 0 00.257.774l3.733 1.876a.577.577 0 00.775-.256L11.753 6.43a.577.577 0 00-.257-.775L7.763 3.78a.575.575 0 00-.774.257z" fill="url(#make-g0)"/>
-          <path d="M19.245 3.832h4.179c.318 0 .577.26.577.577v15.425a.578.578 0 01-.577.578h-4.179a.578.578 0 01-.577-.578V4.41c0-.318.259-.577.577-.577z" fill="url(#make-g1)"/>
-          <path d="M12.815 4.085L9.85 19.108a.576.576 0 00.453.677l4.095.826c.314.063.62-.14.681-.454l2.964-15.022a.577.577 0 00-.453-.677l-4.096-.827a.577.577 0 00-.68.454z" fill="url(#make-g2)"/>
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="#6D29D9" strokeWidth="1.5" fill="rgba(109,41,217,0.08)"/>
+          <circle cx="12" cy="12" r="4" stroke="#6D29D9" strokeWidth="1.5"/>
+          <circle cx="12" cy="12" r="1" fill="#6D29D9"/>
         </svg>
       ),
     },
@@ -119,8 +117,9 @@ const PlatformIcon = ({ p, size = 20 }) => {
       color: '#FF4A00',
       bg: 'rgba(255,74,0,0.12)',
       render: (s) => (
-        <svg width={s} height={s} viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
-          <path d="M128.08 0c7.23.01 14.34.62 21.26 1.78v74.52l52.83-52.7a128.2 128.2 0 0130.18 30.1l-52.83 52.7h74.7a127.4 127.4 0 010 42.56h-74.73l52.85 52.68a128.2 128.2 0 01-30.16 30.1L149.34 179v74.52a127.4 127.4 0 01-42.66 0V179l-52.83 52.74a128.2 128.2 0 01-30.18-30.1l52.83-52.68H1.78a127.4 127.4 0 010-42.56h74.72L23.67 53.7a128.2 128.2 0 0130.16-30.1l52.83 52.7V1.78A127.4 127.4 0 01127.93 0h.15zm-.01 95.76c-9.51 0-18.62 1.74-27.04 4.9a127.7 127.7 0 00-4.99 26.97v.12c0 9.48 1.75 18.57 4.93 26.95 8.41 3.16 17.52 4.9 27.04 4.9h.12c9.51 0 18.62-1.74 27.02-4.9 3.17-8.4 4.93-17.47 4.93-26.95v-.12a75.5 75.5 0 00-4.93-26.97c-8.4-3.16-17.51-4.9-27.02-4.9h-.06z" fill="#FF4A00" fillRule="nonzero"/>
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2v8l6-6M12 2v8l-6-6M12 22v-8l6 6M12 22v-8l-6 6M2 12h8l-6-6M2 12h8l-6 6M22 12h-8l6-6M22 12h-8l6 6" stroke="#FF4A00" strokeWidth="1.5" strokeLinecap="round"/>
+          <circle cx="12" cy="12" r="3" fill="#FF4A00" opacity="0.2" stroke="#FF4A00" strokeWidth="1"/>
         </svg>
       ),
     },
@@ -128,12 +127,15 @@ const PlatformIcon = ({ p, size = 20 }) => {
       color: 'var(--text-secondary)',
       bg: 'var(--surface)',
       render: (s) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+        <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2"/>
+          <path d="m7 10 3 2-3 2"/>
+          <path d="M13 14h4"/>
         </svg>
       ),
     },
   };
+
   const pf = platforms[p] || platforms.custom;
   return (
     <span className={`platform-icon pi-${p}`}
@@ -144,32 +146,55 @@ const PlatformIcon = ({ p, size = 20 }) => {
   );
 };
 
-const SeverityIcon = ({ severity, size = 16 }) => {
-  const map = {
-    critical: { color: '#ef4444', icon: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.008v.008H12v-.008z' },
-    error:    { color: '#f97316', icon: 'M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z' },
-    warn:     { color: '#eab308', icon: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.008v.008H12v-.008z' },
-    info:     { color: '#3b82f6', icon: 'M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z' },
+// Severity icons â proper icon + color combos
+const SeverityIcon = ({ sev, size = 16 }) => {
+  const config = {
+    critical: { icon: 'shieldAlert', color: 'var(--sev-critical)', bg: 'rgba(239,68,68,0.12)' },
+    error:    { icon: 'xCircle',     color: 'var(--sev-error)',    bg: 'rgba(245,158,11,0.12)' },
+    warn:     { icon: 'alertTriangle', color: 'var(--sev-warn)',   bg: 'rgba(234,179,8,0.12)' },
+    info:     { icon: 'infoCircle',  color: 'var(--sev-info)',     bg: 'rgba(59,130,246,0.12)' },
   };
-  const s = map[severity] || map.info;
+  const c = config[sev] || config.info;
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={s.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d={s.icon}/>
-    </svg>
+    <span className={`sev-icon sev-icon-${sev}`}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                   width: size + 6, height: size + 6, borderRadius: 6, background: c.bg, flexShrink: 0 }}>
+      <Icon name={c.icon} size={size} className="" strokeWidth={2}/>
+      <style>{`.sev-icon-${sev} svg { color: ${c.color}; }`}</style>
+    </span>
   );
 };
 
-const SeverityDot = ({ sev, size = 8 }) => {
+// Backward-compatible SeverityDot (still used in legends, small contexts)
+const SeverityDot = ({ sev, size = 8, withIcon = false }) => {
   const colors = { critical: 'var(--sev-critical)', error: 'var(--sev-error)', warn: 'var(--sev-warn)', info: 'var(--sev-info)' };
+  if (withIcon) return <SeverityIcon sev={sev} size={size}/>;
   return <span className="sev-dot" style={{ width: size, height: size, background: colors[sev] }} />;
 };
 
-const StatusIndicator = ({ status, size = 8 }) => {
-  const colors = { active: 'var(--sev-info)', error: 'var(--sev-error)', paused: 'var(--sev-warn)', inactive: 'var(--text-tertiary)' };
-  return <span className="status-dot" style={{ width: size, height: size, borderRadius: '50%', background: colors[status] || colors.inactive, display: 'inline-block' }} />;
+// Status indicator (for workflow health)
+const StatusIndicator = ({ status, size = 14 }) => {
+  const config = {
+    active:   { icon: 'checkCircle', color: 'var(--status-resolved, #22c55e)', label: 'Active' },
+    healthy:  { icon: 'checkCircle', color: 'var(--status-resolved, #22c55e)', label: 'Healthy' },
+    running:  { icon: 'activity',    color: 'var(--accent, #3b82f6)',         label: 'Running' },
+    warning:  { icon: 'alertTriangle', color: 'var(--sev-warn)',              label: 'Warning' },
+    error:    { icon: 'xCircle',     color: 'var(--sev-error)',               label: 'Error' },
+    inactive: { icon: 'pause',       color: 'var(--text-tertiary)',           label: 'Inactive' },
+    archived: { icon: 'inbox',       color: 'var(--text-tertiary)',           label: 'Archived' },
+  };
+  const c = config[status] || config.inactive;
+  return (
+    <span className="status-indicator" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+          title={c.label}>
+      <span style={{ color: c.color, display: 'inline-flex' }}>
+        <Icon name={c.icon} size={size} strokeWidth={2}/>
+      </span>
+    </span>
+  );
 };
 
-const Badge = ({ kind, children }) => <span className={"badge " + (kind||"")}>{children}</span>;
+const Badge = ({ kind, children }) => <span className={`badge ${kind}`}>{children}</span>;
 
 // tiny sparkline
 const Sparkline = ({ data, color = 'currentColor', height = 36, fill = true }) => {
@@ -178,17 +203,17 @@ const Sparkline = ({ data, color = 'currentColor', height = 36, fill = true }) =
   const min = Math.min(...data), max = Math.max(...data);
   const range = max - min || 1;
   const pts = data.map((v, i) => [i / (data.length - 1) * w, h - ((v - min) / range) * h * 0.85 - 2]);
-  const line = pts.map((p, i) => (i === 0 ? 'M' + p[0] + ',' + p[1] : 'L' + p[0] + ',' + p[1])).join(' ');
-  const area = line + ' L' + w + ',' + h + ' L0,' + h + ' Z';
+  const line = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
+  const area = `${line} L${w},${h} L0,${h} Z`;
   return (
-    <svg viewBox={"0 0 " + w + " " + h} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }}>
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }}>
       <defs>
-        <linearGradient id={"spark-" + color.replace(/[^a-z]/gi,'')} x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={`spark-${color.replace(/[^a-z]/gi,'')}`} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.32"/>
           <stop offset="100%" stopColor={color} stopOpacity="0"/>
         </linearGradient>
       </defs>
-      {fill && <path d={area} fill={"url(#spark-" + color.replace(/[^a-z]/gi,'') + ")"} />}
+      {fill && <path d={area} fill={`url(#spark-${color.replace(/[^a-z]/gi,'')})`} />}
       <path d={line} stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
@@ -348,7 +373,7 @@ const SeverityBreakdown = ({ counts, mode = 'bar' }) => {
             <li key={it.sev} className="sev-legend-row">
               <SeverityIcon sev={it.sev} size={12}/>
               <span className="name">{it.label}</span>
-              <span className="count">{it.n} · {Math.round(it.n/total*100)}%</span>
+              <span className="count">{it.n} Â· {Math.round(it.n/total*100)}%</span>
             </li>
           ))}
         </ul>
@@ -394,7 +419,7 @@ const SeverityBreakdown = ({ counts, mode = 'bar' }) => {
           <li key={it.sev} className="sev-legend-row">
             <SeverityIcon sev={it.sev} size={11}/>
             <span className="name">{it.label}</span>
-            <span className="count">{it.n} · {Math.round(it.n/total*100)}%</span>
+            <span className="count">{it.n} Â· {Math.round(it.n/total*100)}%</span>
           </li>
         ))}
       </ul>
