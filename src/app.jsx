@@ -155,4 +155,9 @@ function ErrorLensTweaksPanel({ tweaks, setTweak }) {
         onChange={(v) => setTweak('timeline', v)}/>
       <TweakRadio label="Severity" value={tweaks.severity}
         options={[{value:'bar',label:'Bar'},{value:'donut',label:'Donut'},{value:'multiples',label:'Multi'}]}
-        onChange={(v) =>
+        onChange={(v) => setTweak('severity', v)}/>
+    </TweaksPanel>
+  );
+}
+
+Object.assign(window, { ErrorLensApp, ErrorLensTweaksPanel, TWEAK_DEFAULTS });

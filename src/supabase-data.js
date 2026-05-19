@@ -184,19 +184,16 @@ async function _elFetchAndBuild() {
   const _iso = (offsetDays) => new Date(Date.now() - offsetDays * 86400000).toISOString().slice(0, 10);
   const tomorrow = _iso(-1);
   const periods = {
-    today:    _sumRange(_iso(0), tomorrow),
-    yesterday:_sumRange(_iso(1), _iso(0)),
-    last7d:   _sumRange(_iso(7), tomorrow),
-    prev7d:   _sumRange(_iso(14), _iso(7)),
-    last30d:  _sumRange(_iso(30), tomorrow),
-    prev30d:  _sumRange(_iso(60), _iso(30)),
+    today:     _sumRange(_iso(0), tomorrow),
+    yesterday: _sumRange(_iso(1), _iso(0)),
+    last7d:    _sumRange(_iso(7), tomorrow),
+    prev7d:    _sumRange(_iso(14), _iso(7)),
+    last30d:   _sumRange(_iso(30), tomorrow),
+    prev30d:   _sumRange(_iso(60), _iso(30)),
   };
   const statsComparison = {
     ...periods,
-    dod: {
-      errors: _delta(periods.today.errors, periods.yesterday.errors),
-      runs:   _delta(periods.today.runs,   periods.yesterday.runs),
-    },
+    dod: { errors: _delta(periods.today.errors, periods.yesterday.errors), runs: _delta(periods.today.runs, periods.yesterday.runs) },
     wow: {
       errors: _delta(periods.last7d.errors, periods.prev7d.errors),
       runs:   _delta(periods.last7d.runs,   periods.prev7d.runs),
@@ -205,10 +202,7 @@ async function _elFetchAndBuild() {
         periods.prev7d.runs > 0 ? (periods.prev7d.errors / periods.prev7d.runs) * 100 : 0,
       ),
     },
-    mom: {
-      errors: _delta(periods.last30d.errors, periods.prev30d.errors),
-      runs:   _delta(periods.last30d.runs,   periods.prev30d.runs),
-    },
+    mom: { errors: _delta(periods.last30d.errors, periods.prev30d.errors), runs: _delta(periods.last30d.runs, periods.prev30d.runs) },
   };
 
   window.EL_DATA = {
@@ -220,18 +214,15 @@ async function _elFetchAndBuild() {
     alertRules,
     platformsRegistered,
     teamUsers,
-    // NEW: extra live data for enhanced pages
     workflows,
     dailyStats,
     snapshots,
     platforms,
     todayErrors,
     todayRuns,
-    // Ownership data
     teamMembers,
     workflowOwners,
     ownerMap,
-    // Period-over-period
     statsComparison,
   };
 
@@ -241,4 +232,67 @@ async function _elFetchAndBuild() {
 }
 
 // --- Auto-refresh system ---
-window.EL_REFRESH_INTERVAL = 60000; // 60 sec
+window.EL_REFRESH_INTERVAL = 60000; // 60s (was 30s; halves Supabase load)
+window._elTabVisible = true;
+document.addEventListener('visibilitychange', () => { window._elTabVisible = !document.hidden; });
+window._elRefreshTimer = null;
+window._elRefreshing = false;
+window._elLastRefresh = null;
+
+// Manual refresh â callable from anywhere
+window.EL_REFRESH = async () => {
+  if (window._elRefreshing) return window.EL_DATA;
+  window._elRefreshing = true;
+  try {
+    const data = await _elFetchAndBuild();
+    window._elLastRefresh = Date.now();
+    console.log('[ErrorLens] Data refreshed at', new Date().toLocaleTimeString());
+    return data;
+  } catch (err) {
+    console.error('[ErrorLens] Refresh failed:', err);
+    return window.EL_DATA;
+  } finally {
+    window._elRefreshing = false;
+  }
+};
+
+// Start auto-refresh loop
+window.EL_START_AUTOREFRESH = (intervalMs) => {
+  if (window._elRefreshTimer) clearInterval(window._elRefreshTimer);
+  const ms = intervalMs || window.EL_REFRESH_INTERVAL;
+  window._elRefreshTimer = setInterval(() => window.EL_REFRESH(), ms);
+  console.log(`[ErrorLens] Auto-refresh started (every ${ms/1000}s)`);
+};
+
+window.EL_STOP_AUTOREFRESH = () => {
+  if (window._elRefreshTimer) {
+    clearInterval(window._elRefreshTimer);
+    window._elRefreshTimer = null;
+    console.log('[ErrorLens] Auto-refresh stopped');
+  }
+};
+
+// --- Webhook push receiver (for n8n/Make direct pushes) ---
+// n8n/Make can call: POST /rest/v1/el_errors with error data
+// This function handles incoming webhook errors and merges into live data
+window.EL_PUSH_ERROR = async (errorData) => {
+  try {
+    // Insert into Supabase
+    await window.EL_SUPABASE.post('el_errors', errorData);
+    // Trigger a refresh to pick up the new error
+    await window.EL_REFRESH();
+    return { success: true };
+  } catch (err) {
+    console.error('[ErrorLens] Push error failed:', err);
+    return { success: false, error: err.message };
+  }
+};
+
+// Initial load
+window.EL_DATA_LOADING = (async () => {
+  const data = await _elFetchAndBuild();
+  window._elLastRefresh = Date.now();
+  // Start auto-refresh after initial load
+  window.EL_START_AUTOREFRESH();
+  return data;
+})();
