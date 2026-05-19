@@ -419,4 +419,20 @@ const SeverityBreakdown = ({ counts, mode = 'bar' }) => {
       <div className="sev-bar">
         {items.map(it => (
           <div key={it.sev} title={`${it.label}: ${it.n}`}
-               style={{ flex: it.n, backgr
+               style={{ flex: it.n, background: it.color, minWidth: it.n ? 4 : 0 }}/>
+        ))}
+      </div>
+      <ul className="sev-legend" style={{ listStyle: 'none', padding: 0, margin: '16px 0 0' }}>
+        {items.map(it => (
+          <li key={it.sev} className="sev-legend-row">
+            <SeverityIcon sev={it.sev} size={11}/>
+            <span className="name">{it.label}</span>
+            <span className="count">{it.n} Â· {Math.round(it.n/total*100)}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+Object.assign(window, { Icon, ErrorLensLogo, PlatformIcon, SeverityIcon, SeverityDot, StatusIndicator, Badge, Sparkline, TimelineChart, SeverityBreakdown });
