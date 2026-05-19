@@ -54,9 +54,14 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
     if (route === 'workflows') return ['Monitoring', 'Workflows'];
     if (route === 'events') return ['Monitoring', 'Error feed'];
     if (route === 'event') return ['Monitoring', 'Error feed', openEvent?.id || 'Detail'];
+    if (route === 'analytics') return ['Monitoring', 'Analytics'];
+    if (route === 'sla') return ['Monitoring', 'SLA Monitor'];
     if (route === 'alerts') return ['Monitoring', 'Alert rules'];
+    if (route === 'notifications') return ['Monitoring', 'Notifications'];
+    if (route === 'runbooks') return ['Configuration', 'Runbooks'];
     if (route === 'integrations') return ['Configuration', 'Integrations'];
     if (route === 'users') return ['Configuration', 'Users'];
+    if (route === 'audit') return ['Configuration', 'Audit Log'];
     if (route === 'settings') return ['Account', 'Settings'];
     if (route === 'login') return ['Sign in'];
     return ['Overview'];
@@ -105,9 +110,14 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
             {route === 'workflows'   && <WorkflowsPage/>}
             {route === 'events'      && <FeedPage onOpenEvent={goEvent}/>}
             {route === 'event'       && <EventDetailPage event={openEvent || window.EL_DATA.events[0]} onBack={() => setRoute('events')}/>}
+            {route === 'analytics'   && <AnalyticsPage/>}
+            {route === 'sla'         && <SLAMonitorPage/>}
             {route === 'alerts'      && <AlertsPage onOpenSheet={() => setSheetOpen(true)}/>}
+            {route === 'notifications'&& <NotificationsPage/>}
+            {route === 'runbooks'    && <RunbooksPage/>}
             {route === 'integrations'&& <IntegrationsPage/>}
             {route === 'users'       && <UsersPage/>}
+            {route === 'audit'       && <AuditLogPage/>}
             {route === 'settings'    && <SettingsPage/>}
           </div>
           <AlertSheet open={sheetOpen} onClose={() => setSheetOpen(false)}/>

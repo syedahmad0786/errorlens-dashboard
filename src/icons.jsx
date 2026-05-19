@@ -64,6 +64,9 @@ const Icon = ({ name, size = 16, className = '', strokeWidth = 1.75 }) => {
     upload:        <><path d="M12 15V3m0 0l-4 4m4-4l4 4M4 21h16"/></>,
     calendar:      <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>,
     thumbsUp:      <><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/><path d="M14 9V5a3 3 0 0 0-6 0v4"/><path d="M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7"/></>,
+    chart:         <><path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 5-9"/></>,
+    book:          <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
+    log:           <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"

@@ -1790,6 +1790,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
 <script type="text/babel" src="src/pages.jsx"></script>
 <script type="text/babel" src="src/secondary-pages.jsx"></script>
 <script type="text/babel" src="src/workflows-page.jsx"></script>
+<script type="text/babel" src="src/new-tabs.jsx"></script>
 <script type="text/babel" src="src/app.jsx"></script>
 
 <script type="text/babel">
@@ -1797,7 +1798,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 24px 0; }
 
   function getRouteFromHash() {
     const hash = window.location.hash.replace('#/', '').replace('#', '');
-    const valid = ['overview','events','event','alerts','integrations','users','billing','settings','login','workflows'];
+    const valid = ['overview','events','event','alerts','integrations','users','billing','settings','login','workflows','analytics','audit','runbooks','sla','notifications'];
     return valid.includes(hash) ? hash : 'overview';
   }
 
