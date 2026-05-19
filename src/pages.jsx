@@ -1,4 +1,4 @@
-// ErrorLens — pages
+// ErrorLens â pages
 const { useState, useEffect, useMemo, useRef } = React;
 // Use getter so we always get the latest data (mock or live Supabase)
 const _getD = () => window.EL_DATA;
@@ -12,10 +12,11 @@ const NAV = [
   { id: 'alerts',   label: 'Alert rules',  icon: 'bell',  group: 'Monitoring' },
   { id: 'integrations', label: 'Integrations', icon: 'plug', group: 'Configuration' },
   { id: 'users',    label: 'Users',        icon: 'users', group: 'Configuration' },
+  { id: 'billing',  label: 'Billing',      icon: 'card',  group: 'Account' },
   { id: 'settings', label: 'Settings',     icon: 'cog',   group: 'Account' },
 ];
 
-const Sidebar = ({ route, onNav, sidebar, onToggleSidebar , user, onLogout}) => {
+const Sidebar = ({ route, onNav, sidebar, onToggleSidebar }) => {
   const groups = ['Monitoring', 'Configuration', 'Account'];
   return (
     <aside className="sidebar">
@@ -55,29 +56,68 @@ const Sidebar = ({ route, onNav, sidebar, onToggleSidebar , user, onLogout}) => 
   );
 };
 
-const Topbar = ({ crumbs, onSearch }) => (
-  <div className="topbar">
-    <div className="crumbs">
-      {crumbs.map((c, i) => (
-        <span key={i} style={{ display: 'contents' }}>
-          <span className={i === crumbs.length - 1 ? 'current' : ''}>{c}</span>
-          {i < crumbs.length - 1 && <Icon name="chevronR" size={12} className="sep"/>}
-        </span>
-      ))}
+const Topbar = ({ crumbs, onSearch }) => {
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    const tick = setInterval(() => {
+      if (window._elLastRefresh) setLastRefresh(window._elLastRefresh);
+    }, 5000);
+    return () => clearInterval(tick);
+  }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await window.EL_REFRESH();
+    setLastRefresh(Date.now());
+    setRefreshing(false);
+  };
+
+  const ago = lastRefresh ? (() => {
+    const s = Math.floor((Date.now() - lastRefresh) / 1000);
+    if (s < 5) return 'just now';
+    if (s < 60) return `${s}s ago`;
+    return `${Math.floor(s / 60)}m ago`;
+  })() : '';
+
+  return (
+    <div className="topbar">
+      <div className="crumbs">
+        {crumbs.map((c, i) => (
+          <span key={i} style={{ display: 'contents' }}>
+            <span className={i === crumbs.length - 1 ? 'current' : ''}>{c}</span>
+            {i < crumbs.length - 1 && <Icon name="chevronR" size={12} className="sep"/>}
+          </span>
+        ))}
+      </div>
+      <div className="topbar-search">
+        <Icon name="search" className="ico"/>
+        <input placeholder="Search errors, workflows, codesâ¦" onChange={(e) => onSearch && onSearch(e.target.value)}/>
+        <span className="kbd"><span className="kbd-key">â</span><span className="kbd-key">K</span></span>
+      </div>
+      <button className="icon-btn" title="Refresh data" onClick={handleRefresh}
+              style={{ opacity: refreshing ? 0.5 : 1, transition: 'opacity .2s' }}>
+        <Icon name="refreshCw" size={16} style={refreshing ? { animation: 'spin .8s linear infinite' } : {}}/>
+      </button>
+      {ago && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>Updated {ago}</span>}
+      <button className="icon-btn" title="Notifications"><Icon name="bell" size={16}/><span className="dot"/></button>
+      <button className="icon-btn" title="Help"><Icon name="sparkle" size={16}/></button>
+      <div className="avatar">AB</div>
     </div>
-    <div className="topbar-search">
-      <Icon name="search" className="ico"/>
-      <input placeholder="Search errors, workflows, codes…" onChange={(e) => onSearch && onSearch(e.target.value)}/>
-      <span className="kbd"><span className="kbd-key">⌘</span><span className="kbd-key">K</span></span>
-    </div>
-    <button className="icon-btn" title="Notifications"><Icon name="bell" size={16}/><span className="dot"/></button>
-    <button className="icon-btn" title="Help"><Icon name="sparkle" size={16}/></button>
-    <div className="avatar">AB</div>
-  </div>
-);
+  );
+};
 
 // ============ Overview ============
-const OverviewPage = ({ tweaks, onOpenEvent, onNav, onOpenWorkflow }) => {
+const OverviewPage = ({ tweaks, onOpenEvent, onNav }) => {
+  // Re-render on data refresh
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    const handler = () => forceUpdate(n => n + 1);
+    window.addEventListener('el:data-ready', handler);
+    return () => window.removeEventListener('el:data-ready', handler);
+  }, []);
+
   // Live KPIs from Supabase data
   const raw = window.EL_RAW || {};
   const wfs = raw.workflows || [];
@@ -120,7 +160,7 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav, onOpenWorkflow }) => {
       <div className="page-head">
         <div>
           <h1 className="page-title">Overview</h1>
-          <div className="page-sub">Live data · across {(raw.platforms||[]).filter(p=>p.is_connected).length} platforms · {totalWorkflows} workflows</div>
+          <div className="page-sub">Live data Â· across {(raw.platforms||[]).filter(p=>p.is_connected).length} platforms Â· {totalWorkflows} workflows</div>
         </div>
         <div className="row">
           <div className="system-status">
@@ -164,7 +204,7 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav, onOpenWorkflow }) => {
       <div className="chart-grid">
         <div className="card chart-card">
           <div className="card-head">
-            <div className="card-title">Error timeline · 24h</div>
+            <div className="card-title">Error timeline Â· 24h</div>
             <div className="seg">
               {['area','heatmap','ridge'].map(m => (
                 <button key={m} className={tweaks.timeline === m ? 'on' : ''}
@@ -228,249 +268,77 @@ const OverviewPage = ({ tweaks, onOpenEvent, onNav, onOpenWorkflow }) => {
               .sort((a, b) => (b.total_errors || 0) - (a.total_errors || 0))
               .slice(0, 5)
               .map(w => ({
-                id: w.id,
                 wf: w.name,
                 n: w.total_errors || 0,
                 sev: (w.error_rate || 0) > 50 ? 'critical' : (w.error_rate || 0) > 10 ? 'error' : 'warn',
                 platform: w.platform_type,
               }))
             ).map((r, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }}
-                   onClick={() => onOpenWorkflow && onOpenWorkflow(r.id)}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-primary)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <PlatformIcon p={r.platform} size={18}/>
-                    <SeverityDot sev={r.sev} size={6}/><span style={{ borderBottom: '1px dashed var(--border)', paddingBottom: 1 }}>{r.wf}</span>
+                    <SeverityDot sev={r.sev} size={6}/>{r.wf}
                   </span>
                   <span className="mono" style={{ color: 'var(--text-tertiary)' }}>{r.n}</span>
                 </div>
-                <div style={{ height: 4, background: 'var(--card-hover)', borderRadius: 999, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min((r.n/38)*100,100)}%`, background: `var(--sev-${r.sev})`, borderRadius: 999 }}/>
+                <div style={{ height: 4, background: 'var(--card-hover)', borderRadius: 999 }}>
+                  <div style={{ height: '100%', width: `${(r.n/38)*100}%`, background: `var(--sev-${r.sev})`, borderRadius: 999 }}/>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
-    
-
-      {/* ── Workflow Uptime Monitor ── */}
-      <div style={{ marginTop: 32 }}>
-        <h3 style={{ color: 'var(--text)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 18 }}>{'↑'}</span> Workflow Uptime Monitor
-        </h3>
-
-        {/* Overall Uptime Cards */}
-        {(() => {
-          const ou = D.overallUptime || {};
-          const periods = [
-            { label: 'Today', val: ou.today },
-            { label: 'This Week', val: ou.week },
-            { label: 'This Month', val: ou.month },
-            { label: 'Lifetime', val: ou.lifetime },
-          ];
-          return (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-              {periods.map(p => (
-                <div key={p.label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{p.label}</div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: p.val == null ? 'var(--muted)' : p.val >= 99 ? '#22c55e' : p.val >= 95 ? '#eab308' : '#ef4444' }}>
-                    {p.val != null ? p.val + '%' : '—'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-
-        {/* Per-Workflow Uptime Table */}
-        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                <th style={{ textAlign: 'left', padding: '10px 14px', color: 'var(--muted)', fontWeight: 500 }}>Workflow</th>
-                <th style={{ textAlign: 'left', padding: '10px 8px', color: 'var(--muted)', fontWeight: 500, width: 70 }}>Platform</th>
-                <th style={{ textAlign: 'right', padding: '10px 8px', color: 'var(--muted)', fontWeight: 500, width: 70 }}>Today</th>
-                <th style={{ textAlign: 'right', padding: '10px 8px', color: 'var(--muted)', fontWeight: 500, width: 70 }}>Week</th>
-                <th style={{ textAlign: 'right', padding: '10px 8px', color: 'var(--muted)', fontWeight: 500, width: 70 }}>Month</th>
-                <th style={{ textAlign: 'right', padding: '10px 8px', color: 'var(--muted)', fontWeight: 500, width: 80 }}>Lifetime</th>
-                <th style={{ textAlign: 'right', padding: '10px 14px', color: 'var(--muted)', fontWeight: 500, width: 70 }}>Runs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(D.workflowUptime || []).slice(0, 20).map((w, i) => {
-                const pctColor = v => v == null ? 'var(--muted)' : v >= 99 ? '#22c55e' : v >= 95 ? '#eab308' : '#ef4444';
-                const fmt = v => v != null ? v + '%' : '—';
-                return (
-                  <tr key={w.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'var(--card-hover)' }}>
-                    <td style={{ padding: '8px 14px', color: 'var(--text)', fontWeight: 500, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
-                          onClick={() => onOpenWorkflow && onOpenWorkflow(w.id)}
-                          title="Click to view workflow details">
-                        <span style={{ borderBottom: '1px dashed var(--border)', paddingBottom: 1 }}>{w.name}</span></td>
-                    <td style={{ padding: '8px 8px' }}>
-                      <PlatformIcon p={w.platform} size={22}/>
-                    </td>
-                    <td style={{ padding: '8px 8px', textAlign: 'right', color: pctColor(w.today), fontWeight: 600 }}>{fmt(w.today)}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'right', color: pctColor(w.week), fontWeight: 600 }}>{fmt(w.week)}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'right', color: pctColor(w.month), fontWeight: 600 }}>{fmt(w.month)}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'right', color: pctColor(w.lifetime), fontWeight: 600 }}>{fmt(w.lifetime)}</td>
-                    <td style={{ padding: '8px 14px', textAlign: 'right', color: 'var(--muted)' }}>{w.totalRuns.toLocaleString()}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-</div>
+    </div>
   );
 };
-// ============ Error Feed — Workflow Tabs + Grouped Errors ============
+
+// ============ Error Feed ============
 const FeedPage = ({ onOpenEvent }) => {
   const [search, setSearch] = useState('');
   const [sev, setSev] = useState({ critical: true, error: true, warn: true, info: true });
+  const [plat, setPlat] = useState({ n8n: true, zapier: true, make: true, custom: true });
   const [status, setStatus] = useState({ open: true, ack: true, resolved: true });
-  // Load persisted error statuses from Supabase
-  const [errorStatuses, setErrorStatuses] = React.useState({});
-  React.useEffect(() => {
-    if (window.EL_AUTH && window.EL_AUTH.session()) {
-      window.EL_AUTH.getErrorStatuses().then(statuses => {
-        const map = {};
-        statuses.forEach(s => { map[s.error_id] = s.status; });
-        setErrorStatuses(map);
-      }).catch(() => {});
-    }
-  }, []);
-
-
-  // Merge persisted statuses into events
-  const eventsWithStatus = React.useMemo(() => {
-    if (!D || !D.events) return [];
-    return D.events.map(e => {
-      const persisted = errorStatuses[e.id];
-      return persisted ? { ...e, status: persisted } : e;
-    });
-  }, [D, errorStatuses]);
-
-
-  const [activeTab, setActiveTab] = useState('all');
-  const [expandedGroup, setExpandedGroup] = useState(null);
-  const [expandedEvent, setExpandedEvent] = useState(null);
+  const [expanded, setExpanded] = useState(null);
   const [page, setPage] = useState(1);
-  const pageSize = 15;
+  const pageSize = 12;
+  const [sort, setSort] = useState({ key: 'minutesAgo', dir: 1 });
 
-  // Build workflow tabs from live data
-  const workflowTabs = useMemo(() => {
-    const wfMap = {};
-    eventsWithStatus.forEach(e => {
-      if (!wfMap[e.workflowId]) {
-        wfMap[e.workflowId] = { id: e.workflowId, name: e.workflow, platform: e.platform, count: 0, openCount: 0 };
-      }
-      wfMap[e.workflowId].count++;
-      if (e.status === 'open') wfMap[e.workflowId].openCount++;
-    });
-    return Object.values(wfMap).sort((a, b) => b.count - a.count);
+  // Re-render on data refresh
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    const handler = () => forceUpdate(n => n + 1);
+    window.addEventListener('el:data-ready', handler);
+    return () => window.removeEventListener('el:data-ready', handler);
   }, []);
 
-  // Filter events by active tab + filters
   const filtered = useMemo(() => {
-    let arr = eventsWithStatus.filter(e =>
-      sev[e.severity] &&
-      status[e.status] &&
-      (activeTab === 'all' || e.workflowId === activeTab) &&
+    let arr = D.events.filter(e =>
+      sev[e.severity] && plat[e.platform] && status[e.status] &&
       (!search || e.message.toLowerCase().includes(search.toLowerCase()) || e.workflow.toLowerCase().includes(search.toLowerCase()) || e.code.toLowerCase().includes(search.toLowerCase()))
     );
-    return arr;
-  }, [search, sev, status, activeTab]);
-
-  // Group identical errors (same message + same error code + same workflow)
-  const grouped = useMemo(() => {
-    const gMap = {};
-    filtered.forEach(e => {
-      const key = `${e.workflowId}::${e.message}::${e.code}`;
-      if (!gMap[key]) {
-        gMap[key] = {
-          key,
-          message: e.message,
-          code: e.code,
-          severity: e.severity,
-          workflow: e.workflow,
-          workflowId: e.workflowId,
-          platform: e.platform,
-          status: e.status,
-          latestTime: e.fullTime,
-          latestTimestamp: e.timestamp,
-          minutesAgo: e.minutesAgo,
-          errorNode: e.errorNode,
-          instances: [],
-        };
-      }
-      gMap[key].instances.push(e);
-      // Keep the most recent info
-      if (e.minutesAgo < gMap[key].minutesAgo) {
-        gMap[key].minutesAgo = e.minutesAgo;
-        gMap[key].latestTime = e.fullTime;
-        gMap[key].latestTimestamp = e.timestamp;
-        gMap[key].severity = e.severity;
-      }
-      // If any instance is open, mark group as open
-      if (e.status === 'open') gMap[key].status = 'open';
+    arr = [...arr].sort((a, b) => {
+      const av = a[sort.key], bv = b[sort.key];
+      if (av < bv) return -1 * sort.dir;
+      if (av > bv) return 1 * sort.dir;
+      return 0;
     });
-    return Object.values(gMap).sort((a, b) => a.minutesAgo - b.minutesAgo);
-  }, [filtered]);
+    return arr;
+  }, [search, sev, plat, status, sort]);
 
-  const pageGroups = grouped.slice((page - 1) * pageSize, page * pageSize);
-  const totalPages = Math.max(1, Math.ceil(grouped.length / pageSize));
+  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
   const toggleSet = (set, setSet, k) => setSet({ ...set, [k]: !set[k] });
-  const [resolvingGroup, setResolvingGroup] = React.useState(null);
-
-  // Resolve/unresolve all errors in a group via el_errors table
-  const resolveGroup = async (group, newResolved) => {
-    setResolvingGroup(group.key);
-    try {
-      const sb = window.EL_SUPABASE;
-      const errorIds = group.instances.map(e => e.id);
-      const now = new Date().toISOString();
-      // Batch update all errors in this group
-      for (const eid of errorIds) {
-        await sb.patch('el_errors', `id=eq.${eid}`, {
-          is_resolved: newResolved,
-          resolved_at: newResolved ? now : null,
-          resolved_by: newResolved ? 'dashboard' : null,
-        });
-      }
-      // Update in-memory status
-      const newStatuses = { ...errorStatuses };
-      errorIds.forEach(eid => { newStatuses[eid] = newResolved ? 'resolved' : 'open'; });
-      setErrorStatuses(newStatuses);
-      // Also update EL_RAW so data persists within session
-      if (window.EL_RAW && window.EL_RAW.errors) {
-        window.EL_RAW.errors.forEach(e => {
-          if (errorIds.includes(e.id)) {
-            e.is_resolved = newResolved;
-            e.resolved_at = newResolved ? now : null;
-          }
-        });
-      }
-    } catch (err) {
-      alert('Failed to update errors: ' + err.message);
-    }
-    setResolvingGroup(null);
-  };
-
-  // Reset page when tab changes
-  const switchTab = (tab) => { setActiveTab(tab); setPage(1); setExpandedGroup(null); setExpandedEvent(null); };
-
-  const totalFiltered = filtered.length;
-  const totalGrouped = grouped.length;
+  const toggleSort = (key) => setSort(s => s.key === key ? { key, dir: -s.dir } : { key, dir: 1 });
 
   return (
     <div className="content">
       <div className="page-head">
         <div>
           <h1 className="page-title">Error feed</h1>
-          <div className="page-sub">{totalFiltered} errors in {totalGrouped} groups · {workflowTabs.length} workflows</div>
+          <div className="page-sub">{filtered.length} events match your filters Â· across {Object.values(plat).filter(Boolean).length} platforms</div>
         </div>
         <div className="row">
           <button className="btn btn-ghost"><Icon name="download" size={14}/> CSV</button>
@@ -478,34 +346,23 @@ const FeedPage = ({ onOpenEvent }) => {
         </div>
       </div>
 
-      {/* Workflow Tabs */}
-      <div className="wf-tabs">
-        <button className={`wf-tab ${activeTab === 'all' ? 'active' : ''}`} onClick={() => switchTab('all')}>
-          <Icon name="layers" size={13}/>
-          <span>All workflows</span>
-          <span className="wf-tab-count">{eventsWithStatus.length}</span>
-        </button>
-        {workflowTabs.map(wf => (
-          <button key={wf.id} className={`wf-tab ${activeTab === wf.id ? 'active' : ''}`} onClick={() => switchTab(wf.id)}>
-            <PlatformIcon p={wf.platform} size={13}/>
-            <span className="wf-tab-name">{wf.name}</span>
-            <span className="wf-tab-count">{wf.count}</span>
-            {wf.openCount > 0 && <span className="wf-tab-open">{wf.openCount} open</span>}
-          </button>
-        ))}
-      </div>
-
-      {/* Filters */}
       <div className="filter-bar">
         <div className="search-box">
           <Icon name="search" className="ico"/>
-          <input placeholder="Search errors by message or code…" value={search} onChange={(e) => setSearch(e.target.value)}/>
+          <input placeholder="Search errors by message, workflow, or codeâ¦" value={search} onChange={(e)=>setSearch(e.target.value)}/>
         </div>
         <div className="chip-group">
           {['critical','error','warn','info'].map(s => (
             <button key={s} className={`chip ${sev[s] ? 'on '+(s==='critical'?'crit':s==='error'?'err':s==='warn'?'warn':'info') : ''}`}
                     onClick={() => toggleSet(sev, setSev, s)}>
-              <span className="dot" style={{ background: `var(--sev-${s})` }}/>{s}
+              <SeverityDot sev={s} size={6}/>{s}
+            </button>
+          ))}
+        </div>
+        <div className="chip-group">
+          {['n8n','zapier','make','custom'].map(p => (
+            <button key={p} className={`chip ${plat[p] ? 'on' : ''}`} onClick={() => toggleSet(plat, setPlat, p)}>
+              <PlatformIcon p={p} size={16}/>{p}
             </button>
           ))}
         </div>
@@ -516,100 +373,50 @@ const FeedPage = ({ onOpenEvent }) => {
         </div>
       </div>
 
-      {/* Grouped Error List */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflow: 'auto' }}>
           <table className="tbl">
             <thead>
               <tr>
                 <th style={{ width: 36 }}/>
-                <th>Platform</th>
-                <th>Workflow</th>
+                <th onClick={() => toggleSort('platform')}>Platform <Icon name="sort" size={10}/></th>
+                <th onClick={() => toggleSort('workflow')}>Workflow <Icon name="sort" size={10}/></th>
                 <th>Error</th>
-                <th style={{ width: 80 }}>Count</th>
                 <th>Status</th>
-                <th>Latest</th>
+                <th onClick={() => toggleSort('minutesAgo')}>Time {sort.key==='minutesAgo' && <Icon name={sort.dir>0?'chevronD':'chevronU'} size={10}/>}</th>
               </tr>
             </thead>
             <tbody>
-              {pageGroups.map(g => {
-                const isOpen = expandedGroup === g.key;
-                const count = g.instances.length;
+              {pageRows.map(e => {
+                const open = expanded === e.id;
                 return (
-                  <React.Fragment key={g.key}>
-                    <tr className={`group-row ${isOpen ? 'expanded' : ''}`} onClick={() => { setExpandedGroup(isOpen ? null : g.key); setExpandedEvent(null); }}>
-                      <td><SeverityDot sev={g.severity}/></td>
-                      <td><span className="platform-row"><PlatformIcon p={g.platform}/>{g.platform}</span></td>
-                      <td className="col-wf">{g.workflow}</td>
-                      <td className="col-msg">
-                        <div className="err-msg-wrap">
-                          <Icon name={isOpen ? 'chevronD' : 'chevronR'} size={12} className="expand-chevron"/>
-                          <span>{g.message}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`count-badge ${count > 10 ? 'hot' : count > 3 ? 'warm' : ''}`}>{count}x</span>
-                      </td>
-                      <td><Badge kind={`status-${g.status}`}>{g.status}</Badge></td>
-                      <td style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }} title={g.latestTime}>{g.latestTimestamp}</td>
+                  <React.Fragment key={e.id}>
+                    <tr className={open ? 'expanded' : ''} onClick={() => setExpanded(open ? null : e.id)}>
+                      <td><SeverityIcon sev={e.severity} size={13}/></td>
+                      <td><span className="platform-row"><PlatformIcon p={e.platform} size={20}/>{e.platform}</span></td>
+                      <td className="col-wf">{e.workflow}</td>
+                      <td className="col-msg">{e.message}</td>
+                      <td><Badge kind={`status-${e.status}`}>{e.status}</Badge></td>
+                      <td style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }} title={e.fullTime}>{e.timestamp}</td>
                     </tr>
-                    {isOpen && (
+                    {open && (
                       <tr className="expanded-row">
-                        <td colSpan="7" style={{ padding: 0 }}>
-                          <div className="group-instances">
-                            <div className="group-header">
-                              <div className="group-summary">
-                                <code className="group-code">{g.code}</code>
-                                {g.errorNode && <span className="group-node"><Icon name="bolt" size={11}/> {g.errorNode}</span>}
-                                <span className="group-range">
-                                  {g.instances[g.instances.length - 1].timestamp} — {g.instances[0].timestamp}
-                                </span>
-                              </div>
-                              <div className="group-actions" style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-                                {g.status !== 'resolved' ? (
-                                  <button className="btn btn-primary btn-xs" disabled={resolvingGroup === g.key}
-                                    onClick={(ev) => { ev.stopPropagation(); resolveGroup(g, true); }}
-                                    style={{ fontSize: 11, padding: '3px 10px', background: '#059669' }}>
-                                    {resolvingGroup === g.key ? 'Resolving…' : `✓ Resolve All (${g.instances.length})`}
-                                  </button>
-                                ) : (
-                                  <button className="btn btn-ghost btn-xs" disabled={resolvingGroup === g.key}
-                                    onClick={(ev) => { ev.stopPropagation(); resolveGroup(g, false); }}
-                                    style={{ fontSize: 11, padding: '3px 10px', color: '#f59525' }}>
-                                    {resolvingGroup === g.key ? 'Reopening…' : '↺ Reopen All'}
-                                  </button>
-                                )}
-                              </div>
+                        <td colSpan="6">
+                          <div className="expand-pad">
+                            <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
+                              <code style={{ background: 'var(--card)', padding: '3px 8px', borderRadius: 4, fontSize: 11 }}>{e.code}</code>
+                              <code style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{e.execId}</code>
+                              <div className="spacer"/>
+                              <button className="btn btn-primary" onClick={(ev) => { ev.stopPropagation(); onOpenEvent(e); }}>
+                                Open detail <Icon name="ext" size={12}/>
+                              </button>
                             </div>
-                            <div className="instance-list">
-                              {g.instances.map((e, idx) => {
-                                const evOpen = expandedEvent === e.id;
-                                return (
-                                  <div key={e.id} className={`instance-row ${evOpen ? 'instance-open' : ''}`}>
-                                    <div className="instance-main" onClick={(ev) => { ev.stopPropagation(); setExpandedEvent(evOpen ? null : e.id); }}>
-                                      <span className="instance-num">#{idx + 1}</span>
-                                      <SeverityDot sev={e.severity} size={6}/>
-                                      <span className="instance-id mono">{e.execId}</span>
-                                      <Badge kind={`status-${e.status}`} small>{e.status}</Badge>
-                                      <span className="instance-time" title={e.fullTime}>{e.fullTime ? new Date(e.fullTime).toLocaleString() : e.timestamp}</span>
-                                      <div className="spacer"/>
-                                      <button className="btn btn-ghost btn-xs" onClick={(ev) => { ev.stopPropagation(); onOpenEvent(e); }}>
-                                        Detail <Icon name="ext" size={10}/>
-                                      </button>
-                                    </div>
-                                    {evOpen && (
-                                      <div className="instance-detail">
-                                        <div className="code-block" style={{ margin: '8px 0' }}>
-                                          <div className="code-head"><span>Error detail</span></div>
-                                          <div className="code-body">
-                                            <div className="code-content" style={{ padding: '10px 14px' }}>{e.message}</div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                            <div className="code-block">
+                              <div className="code-head"><span>stack trace Â· first 3 frames</span></div>
+                              <div className="code-body">
+                                <div className="code-lines">{[1,2,3].map(n => <div key={n}>{n}</div>)}</div>
+                                <div className="code-content">{D.stackTrace.split('\n').slice(0,3).join('\n')}</div>
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -618,19 +425,11 @@ const FeedPage = ({ onOpenEvent }) => {
                   </React.Fragment>
                 );
               })}
-              {pageGroups.length === 0 && (
-                <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-tertiary)' }}>
-                    <Icon name="checkCircle" size={24} style={{ marginBottom: 8, opacity: 0.4 }}/>
-                    <div>No errors match your filters</div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
         <div className="pager">
-          <span>Showing {Math.min((page-1)*pageSize + 1, totalGrouped)}–{Math.min(page*pageSize, totalGrouped)} of {totalGrouped} error groups</span>
+          <span>Showing {(page-1)*pageSize + 1}â{Math.min(page*pageSize, filtered.length)} of {filtered.length} events</span>
           <div className="pager-ctrl">
             <button className="btn btn-ghost btn-icon" disabled={page===1} onClick={() => setPage(p => Math.max(1, p-1))}><Icon name="chevronL" size={14}/></button>
             <span style={{ padding: '0 12px', fontSize: 12, color: 'var(--text-secondary)' }}>{page} / {totalPages}</span>
@@ -644,38 +443,42 @@ const FeedPage = ({ onOpenEvent }) => {
 
 // ============ Event Detail ============
 const EventDetailPage = ({ event, onBack }) => {
-  const [evtStatus, setEvtStatus] = React.useState(event ? event.status : 'open');
-  const [updating, setUpdating] = React.useState(false);
-
-  // Load persisted status on mount
-  React.useEffect(() => {
-    if (!event) return;
-    if (window.EL_AUTH && window.EL_AUTH.session()) {
-      window.EL_AUTH.getErrorStatuses().then(statuses => {
-        const found = statuses.find(s => s.error_id === event.id);
-        if (found) setEvtStatus(found.status);
-      }).catch(() => {});
-    }
-  }, [event]);
-
-  const handleStatusChange = async (newStatus) => {
-    if (!window.EL_AUTH || !window.EL_AUTH.session()) {
-      alert('You must be logged in to change error status');
-      return;
-    }
-    setUpdating(true);
-    try {
-      await window.EL_AUTH.setErrorStatus(event.id, newStatus);
-      setEvtStatus(newStatus);
-      // Also update the in-memory event
-      if (event) event.status = newStatus;
-    } catch(err) {
-      alert('Failed to update: ' + err.message);
-    }
-    setUpdating(false);
-  };
+  const [resolving, setResolving] = useState(false);
+  const [detailTab, setDetailTab] = useState('error'); // 'error' | 'execution' | 'workflow'
 
   if (!event) return null;
+
+  // Find the matching execution from raw data
+  const raw = window.EL_RAW || {};
+  const execution = (raw.executions || []).find(e => e.id === event.execId) || null;
+  const workflow = (raw.workflows || []).find(w => w.id === event.workflowId) || null;
+  const owner = workflow ? (window.EL_DATA.ownerMap || {})[workflow.id] : null;
+
+  // Find similar errors (same error type or same workflow)
+  const similarByType = D.events.filter(e => e.code === event.code && e.id !== event.id).slice(0, 6);
+  const similarByWorkflow = D.events.filter(e => e.workflowId === event.workflowId && e.id !== event.id).slice(0, 6);
+
+  // Execution timeline for this workflow (last 10)
+  const wfExecs = (raw.executions || []).filter(e => e.workflow_id === event.workflowId).slice(0, 10);
+
+  const handleResolve = async () => {
+    setResolving(true);
+    try {
+      await window.EL_SUPABASE.upsert('el_error_status', { error_id: event.id, status: 'resolved', updated_at: new Date().toISOString() });
+      await window.EL_SUPABASE.patch('el_errors', `id=eq.${event.id}`, { is_resolved: true, resolved_at: new Date().toISOString() });
+      await window.EL_REFRESH();
+    } catch (err) { console.error('Resolve failed:', err); }
+    setResolving(false);
+  };
+
+  const fmtDate = (d) => d ? new Date(d).toLocaleString() : 'â';
+  const fmtDuration = (ms) => {
+    if (!ms) return 'â';
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms/1000).toFixed(1)}s`;
+    return `${Math.floor(ms/60000)}m ${Math.round((ms%60000)/1000)}s`;
+  };
+
   return (
     <div className="content">
       <div className="page-head">
@@ -686,7 +489,7 @@ const EventDetailPage = ({ event, onBack }) => {
           <div className="row" style={{ gap: 12, marginBottom: 6 }}>
             <SeverityIcon sev={event.severity} size={14}/>
             <Badge kind={`sev-${event.severity}`}>{event.severity}</Badge>
-            <Badge kind={`status-${evtStatus}`}>{evtStatus}</Badge>
+            <Badge kind={`status-${event.status}`}>{event.status}</Badge>
             <code style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{event.id}</code>
           </div>
           <h1 className="page-title" style={{ fontFamily: 'var(--font-mono)', fontSize: 20, marginTop: 8, fontWeight: 500 }}>
@@ -694,67 +497,182 @@ const EventDetailPage = ({ event, onBack }) => {
           </h1>
         </div>
         <div className="row">
-          <button className="btn btn-ghost" disabled={updating || evtStatus === 'acknowledged' || evtStatus === 'resolved'} onClick={() => handleStatusChange('acknowledged')} style={{ opacity: evtStatus !== 'open' ? 0.5 : 1 }}>
-            {evtStatus === 'acknowledged' ? '\u2713 Acknowledged' : updating ? 'Updating...' : 'Acknowledge'}
-          </button>
-          <button className="btn btn-primary" disabled={updating || evtStatus === 'resolved'} onClick={() => handleStatusChange('resolved')} style={{ opacity: evtStatus === 'resolved' ? 0.5 : 1 }}>
-            {evtStatus === 'resolved' ? '\u2713 Resolved' : updating ? 'Updating...' : 'Resolve'}
-          </button>
+          {event.status !== 'resolved' && (
+            <button className="btn btn-primary" onClick={handleResolve} disabled={resolving}>
+              {resolving ? 'Resolving...' : 'Resolve'}
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* Detail tabs */}
+      <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: 'var(--card-hover)', borderRadius: 8, padding: 3, width: 'fit-content' }}>
+        {[{id:'error',label:'Error Details'},{id:'execution',label:'Execution Drill-Down'},{id:'workflow',label:'Workflow History'}].map(t => (
+          <button key={t.id} onClick={() => setDetailTab(t.id)}
+                  style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: 'none', cursor: 'pointer',
+                           background: detailTab === t.id ? 'var(--bg-card)' : 'transparent',
+                           color: detailTab === t.id ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                           boxShadow: detailTab === t.id ? '0 1px 3px rgba(0,0,0,0.2)' : 'none' }}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>
         <div>
-          <div className="meta-grid">
-            <div><div className="m-key">Platform</div><div className="m-val"><span className="platform-row" style={{ marginTop: 4 }}><PlatformIcon p={event.platform} size={14}/>{event.platform}</span></div></div>
-            <div><div className="m-key">Workflow</div><div className="m-val" style={{ fontFamily: 'var(--font-sans)' }}>{event.workflow}</div></div>
-            <div><div className="m-key">Execution ID</div><div className="m-val">{event.execId}</div></div>
-            <div><div className="m-key">Triggered at</div><div className="m-val">{event.fullTime}</div></div>
-            <div><div className="m-key">Error code</div><div className="m-val" style={{ color: 'var(--sev-critical)' }}>{event.code}</div></div>
-            <div><div className="m-key">Assigned</div><div className="m-val" style={{ fontFamily: 'var(--font-sans)' }}>{event.assignedTo || 'Unassigned'}</div></div>
-          </div>
-
-          <div style={{ marginBottom: 24 }}>
-            <div className="card-title" style={{ marginBottom: 10 }}>Stack trace</div>
-            <div className="code-block">
-              <div className="code-head">
-                <span>node:internal/process</span>
-                <button className="btn btn-ghost" style={{ height: 22, fontSize: 11, padding: '0 8px' }}>
-                  <Icon name="copy" size={11}/> Copy
-                </button>
+          {/* Error Details Tab */}
+          {detailTab === 'error' && (
+            <>
+              <div className="meta-grid">
+                <div><div className="m-key">Platform</div><div className="m-val"><span className="platform-row" style={{ marginTop: 4 }}><PlatformIcon p={event.platform} size={14}/>{event.platform}</span></div></div>
+                <div><div className="m-key">Workflow</div><div className="m-val" style={{ fontFamily: 'var(--font-sans)' }}>{event.workflow}</div></div>
+                <div><div className="m-key">Execution ID</div><div className="m-val">{event.execId}</div></div>
+                <div><div className="m-key">Occurred at</div><div className="m-val">{fmtDate(event.fullTime)}</div></div>
+                <div><div className="m-key">Error type</div><div className="m-val" style={{ color: 'var(--sev-critical)' }}>{event.code}</div></div>
+                <div><div className="m-key">Error node</div><div className="m-val">{event.errorNode || 'â'}</div></div>
+                <div><div className="m-key">Owner</div><div className="m-val" style={{ fontFamily: 'var(--font-sans)' }}>{owner ? owner.name : 'Unassigned'}</div></div>
+                <div><div className="m-key">Status</div><div className="m-val"><Badge kind={`status-${event.status}`}>{event.status}</Badge></div></div>
               </div>
-              <div className="code-body">
-                <div className="code-lines">{D.stackTrace.split('\n').map((_, i) => <div key={i}>{i+1}</div>)}</div>
-                <div className="code-content">{D.stackTrace}</div>
-              </div>
-            </div>
-          </div>
 
-          <div>
-            <div className="card-title" style={{ marginBottom: 10 }}>Raw payload</div>
-            <div className="code-block">
-              <div className="code-head"><span>application/json</span><button className="btn btn-ghost" style={{ height: 22, fontSize: 11, padding: '0 8px' }}><Icon name="copy" size={11}/> Copy</button></div>
-              <div className="code-body">
-                <div className="code-lines">{Array.from({length: 14}, (_, i) => <div key={i}>{i+1}</div>)}</div>
-                <div className="code-content">
-                  <span className="code-tok-com">{`// captured at ${event.fullTime}`}</span>{'\n'}
-                  {`{`}{'\n'}
-                  {`  "trigger": {`}{'\n'}
-                  {`    "type": `}<span className="code-tok-str">"webhook"</span>{`,`}{'\n'}
-                  {`    "source": `}<span className="code-tok-str">"stripe"</span>{`,`}{'\n'}
-                  {`    "event": `}<span className="code-tok-str">"invoice.payment_failed"</span>{'\n'}
-                  {`  },`}{'\n'}
-                  {`  "data": {`}{'\n'}
-                  {`    "customer_id": `}<span className="code-tok-str">"cus_OabDef123"</span>{`,`}{'\n'}
-                  {`    "amount_due": `}<span className="code-tok-key">4900</span>{`,`}{'\n'}
-                  {`    "currency": `}<span className="code-tok-str">"usd"</span>{`,`}{'\n'}
-                  {`    "attempt_count": `}<span className="code-tok-key">4</span>{'\n'}
-                  {`  }`}{'\n'}
-                  {`}`}
+              <div style={{ marginBottom: 24 }}>
+                <div className="card-title" style={{ marginBottom: 10 }}>Error message</div>
+                <div className="code-block">
+                  <div className="code-head">
+                    <span>{event.errorNode || 'error output'}</span>
+                    <button className="btn btn-ghost" style={{ height: 22, fontSize: 11, padding: '0 8px' }}
+                            onClick={() => navigator.clipboard.writeText(event.message)}>
+                      <Icon name="copy" size={11}/> Copy
+                    </button>
+                  </div>
+                  <div className="code-body">
+                    <div className="code-content" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{event.message}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
+
+          {/* Execution Drill-Down Tab */}
+          {detailTab === 'execution' && (
+            <>
+              <div className="card" style={{ marginBottom: 20, padding: 20 }}>
+                <div className="card-title" style={{ marginBottom: 16 }}>Execution details</div>
+                {execution ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Execution ID</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{execution.id}</div>
+                    </div>
+                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Status</div>
+                      <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: execution.status === 'success' ? 'var(--status-resolved)' : 'var(--sev-error)' }}/>
+                        <span style={{ color: 'var(--text-primary)' }}>{execution.status}</span>
+                      </div>
+                    </div>
+                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Started</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtDate(execution.started_at)}</div>
+                    </div>
+                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Finished</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{fmtDate(execution.finished_at)}</div>
+                    </div>
+                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Duration</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{fmtDuration(execution.duration_ms)}</div>
+                    </div>
+                    <div style={{ padding: '12px 16px', background: 'var(--card-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Platform</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <PlatformIcon p={execution.platform_type} size={16}/>{execution.platform_type}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                    No execution data found for ID: {event.execId}
+                  </div>
+                )}
+              </div>
+
+              {execution && (execution.error_message || execution.error_node) && (
+                <div className="card" style={{ marginBottom: 20, padding: 20 }}>
+                  <div className="card-title" style={{ marginBottom: 12 }}>Error in execution</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {execution.error_node && (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 80 }}>Failed node:</span>
+                        <code style={{ fontSize: 12, padding: '3px 8px', background: 'var(--sev-critical-bg, rgba(239,68,68,0.1))', color: 'var(--sev-critical)', borderRadius: 4 }}>{execution.error_node}</code>
+                      </div>
+                    )}
+                    {execution.error_type && (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 80 }}>Error type:</span>
+                        <code style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{execution.error_type}</code>
+                      </div>
+                    )}
+                    {execution.error_message && (
+                      <div className="code-block" style={{ marginTop: 8 }}>
+                        <div className="code-head"><span>error output</span></div>
+                        <div className="code-body">
+                          <div className="code-content" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{execution.error_message}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Workflow History Tab */}
+          {detailTab === 'workflow' && (
+            <>
+              {workflow && (
+                <div className="card" style={{ marginBottom: 20, padding: 20 }}>
+                  <div className="card-title" style={{ marginBottom: 16 }}>Workflow: {workflow.name}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                    {[
+                      { label: 'Total runs', val: (workflow.total_executions || 0).toLocaleString(), color: 'var(--text-primary)' },
+                      { label: 'Errors', val: workflow.total_errors || 0, color: 'var(--sev-error)' },
+                      { label: 'Success', val: workflow.total_success || 0, color: 'var(--status-resolved)' },
+                      { label: 'Error rate', val: `${(workflow.error_rate || 0).toFixed(1)}%`, color: (workflow.error_rate || 0) > 10 ? 'var(--sev-critical)' : 'var(--status-resolved)' },
+                    ].map((s, i) => (
+                      <div key={i} style={{ textAlign: 'center', padding: '12px 8px', background: 'var(--card-hover)', borderRadius: 8 }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="card" style={{ padding: 20 }}>
+                <div className="card-title" style={{ marginBottom: 12 }}>Recent executions for this workflow</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    <span>Execution ID</span><span>Status</span><span>Started</span><span>Duration</span><span>Error</span>
+                  </div>
+                  {wfExecs.length === 0 && (
+                    <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>No executions found</div>
+                  )}
+                  {wfExecs.map(ex => (
+                    <div key={ex.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr', gap: 8, padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: 12, alignItems: 'center' }}>
+                      <span className="mono" style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ex.id}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: ex.status === 'success' ? 'var(--status-resolved)' : 'var(--sev-error)' }}/>
+                        {ex.status}
+                      </span>
+                      <span style={{ color: 'var(--text-tertiary)' }}>{fmtDate(ex.started_at)}</span>
+                      <span className="mono">{fmtDuration(ex.duration_ms)}</span>
+                      <span style={{ color: 'var(--sev-error)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ex.error_node || ''}>{ex.error_node || 'â'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -765,25 +683,25 @@ const EventDetailPage = ({ event, onBack }) => {
                 <div className="lifecycle-dot done"><Icon name="check" size={12} strokeWidth={2.5}/></div>
                 <div>
                   <div className="lifecycle-title">Created</div>
-                  <div className="lifecycle-meta">System · {event.timestamp}</div>
+                  <div className="lifecycle-meta">System Â· {fmtDate(event.fullTime)}</div>
                 </div>
               </div>
               <div className="lifecycle-item">
-                <div className={`lifecycle-dot ${evtStatus !== 'open' ? 'done' : 'active'}`}>
-                  {evtStatus !== 'open' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '2'}
+                <div className={`lifecycle-dot ${event.status !== 'open' ? 'done' : 'active'}`}>
+                  {event.status !== 'open' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '2'}
                 </div>
                 <div>
                   <div className="lifecycle-title">Acknowledged</div>
-                  <div className="lifecycle-meta">{evtStatus === 'open' ? 'Pending' : (event.assignedTo || 'Marcus Webb') + ' · 8m later'}</div>
+                  <div className="lifecycle-meta">{event.status === 'open' ? 'Pending' : (owner ? owner.name : 'Team') + ' Â· acknowledged'}</div>
                 </div>
               </div>
               <div className="lifecycle-item">
-                <div className={`lifecycle-dot ${evtStatus === 'resolved' ? 'done' : ''}`}>
-                  {evtStatus === 'resolved' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '3'}
+                <div className={`lifecycle-dot ${event.status === 'resolved' ? 'done' : ''}`}>
+                  {event.status === 'resolved' ? <Icon name="check" size={12} strokeWidth={2.5}/> : '3'}
                 </div>
                 <div>
                   <div className="lifecycle-title">Resolved</div>
-                  <div className="lifecycle-meta">{evtStatus === 'resolved' ? 'Sasha Chen · 2h later' : '—'}</div>
+                  <div className="lifecycle-meta">{event.status === 'resolved' ? 'Resolved' : 'â'}</div>
                 </div>
               </div>
             </div>
@@ -792,7 +710,7 @@ const EventDetailPage = ({ event, onBack }) => {
           <div className="card">
             <div className="card-title" style={{ marginBottom: 12 }}>Triggered alert rules</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {D.alertRules.slice(0,2).map(r => (
+              {D.alertRules.filter(r => r.on).slice(0,3).map(r => (
                 <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
                   <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{r.name}</span>
                   <span style={{ color: 'var(--text-tertiary)' }}>fired</span>
@@ -802,12 +720,33 @@ const EventDetailPage = ({ event, onBack }) => {
           </div>
 
           <div className="card">
-            <div className="card-title" style={{ marginBottom: 12 }}>Similar errors · 7d<span style={{ color: 'var(--text-tertiary)', float: 'right' }}>14</span></div>
+            <div className="card-title" style={{ marginBottom: 12 }}>
+              Similar errors (same type)
+              <span style={{ color: 'var(--text-tertiary)', float: 'right' }}>{similarByType.length}</span>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {D.events.filter(e => e.code === event.code && e.id !== event.id).slice(0, 4).map(e => (
+              {similarByType.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No similar errors found</div>}
+              {similarByType.slice(0, 5).map(e => (
                 <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 12 }}>
                   <SeverityDot sev={e.severity} size={6}/>
                   <span className="mono" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-secondary)' }}>{e.workflow}</span>
+                  <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{e.timestamp}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-title" style={{ marginBottom: 12 }}>
+              Same workflow errors
+              <span style={{ color: 'var(--text-tertiary)', float: 'right' }}>{similarByWorkflow.length}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {similarByWorkflow.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No other errors for this workflow</div>}
+              {similarByWorkflow.slice(0, 5).map(e => (
+                <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 12 }}>
+                  <SeverityDot sev={e.severity} size={6}/>
+                  <span className="mono" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-secondary)' }}>{e.message.substring(0, 50)}</span>
                   <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{e.timestamp}</span>
                 </div>
               ))}
