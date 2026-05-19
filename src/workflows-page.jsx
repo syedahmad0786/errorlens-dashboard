@@ -1,4 +1,4 @@
-// ErrorLens — Workflows Explorer page with Developer Ownership
+// ErrorLens â Workflows Explorer page with Developer Ownership
 // Shows all n8n + Make.com workflows with owner assignment, developer stats, and filtering
 
 const WorkflowsPage = () => {
@@ -13,7 +13,14 @@ const WorkflowsPage = () => {
   const [ownerMap, setOwnerMap] = React.useState({});
   const [teamMembers, setTeamMembers] = React.useState([]);
   const [refreshKey, setRefreshKey] = React.useState(0);
-  const [visibleCount, setVisibleCount] = React.useState(50);
+
+  // Re-render on data refresh
+  const [, forceDataUpdate] = React.useState(0);
+  React.useEffect(() => {
+    const handler = () => forceDataUpdate(n => n + 1);
+    window.addEventListener('el:data-ready', handler);
+    return () => window.removeEventListener('el:data-ready', handler);
+  }, []);
 
   const raw = window.EL_RAW || {};
   const workflows = raw.workflows || [];
@@ -56,7 +63,6 @@ const WorkflowsPage = () => {
     if (status === 'active') wfs = wfs.filter(w => w.is_active && !w.is_archived);
     if (status === 'archived') wfs = wfs.filter(w => w.is_archived);
     if (status === 'inactive') wfs = wfs.filter(w => !w.is_active && !w.is_archived);
-    if (status === 'zombie') wfs = wfs.filter(w => w.is_active && !w.is_archived && (w.total_executions || 0) === 0);
     if (ownerFilter === 'unassigned') wfs = wfs.filter(w => !ownerMap[w.id]);
     else if (ownerFilter !== 'all') wfs = wfs.filter(w => ownerMap[w.id]?.id === ownerFilter);
     if (search) {
@@ -86,7 +92,6 @@ const WorkflowsPage = () => {
   const zapierCount = workflows.filter(w => w.platform_type === 'zapier').length;
   const activeCount = workflows.filter(w => w.is_active && !w.is_archived).length;
   const assignedCount = workflows.filter(w => ownerMap[w.id]).length;
-  const zombieCount = workflows.filter(w => w.is_active && !w.is_archived && (w.total_executions || 0) === 0).length;
 
   return (
     <div className="content">
@@ -94,8 +99,7 @@ const WorkflowsPage = () => {
         <div>
           <h1 className="page-title">Workflows</h1>
           <div className="page-sub">
-            {workflows.length} total · {activeCount} active · {assignedCount} assigned · {workflows.length - assignedCount} unassigned
-            {zombieCount > 0 && <span style={{ color: '#d97706', fontWeight: 600 }}> · {zombieCount} zombie</span>}
+            {workflows.length} total Â· {activeCount} active Â· {assignedCount} assigned Â· {workflows.length - assignedCount} unassigned
           </div>
         </div>
       </div>
@@ -121,7 +125,7 @@ const WorkflowsPage = () => {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
             <div className="topbar-search" style={{ flex: '1 1 220px', maxWidth: 360 }}>
               <Icon name="search" className="ico"/>
-              <input placeholder="Search workflows, apps, owners…" value={search}
+              <input placeholder="Search workflows, apps, ownersâ¦" value={search}
                      onChange={e => setSearch(e.target.value)} style={{ width: '100%' }}/>
             </div>
 
@@ -145,7 +149,7 @@ const WorkflowsPage = () => {
             </select>
 
             <div className="seg">
-              {[{v:'all',l:'All'},{v:'active',l:'Active'},{v:'inactive',l:'Inactive'},{v:'zombie',l:'⚠ Zombie'}].map(m => (
+              {[{v:'all',l:'All'},{v:'active',l:'Active'},{v:'inactive',l:'Inactive'}].map(m => (
                 <button key={m.v} className={status === m.v ? 'on' : ''} onClick={() => setStatus(m.v)}>{m.l}</button>
               ))}
             </div>
@@ -166,24 +170,16 @@ const WorkflowsPage = () => {
           </div>
 
           <div className="page-sub" style={{ margin: '0 0 8px', fontWeight: 600 }}>
-            Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} workflows {filtered.length < workflows.length ? `(filtered from ${workflows.length})` : ''}
+            Showing {filtered.length} of {workflows.length} workflows
           </div>
 
           <div className={view === 'grid' ? 'wf-grid' : 'wf-list'}>
-            {filtered.slice(0, visibleCount).map(wf => (
+            {filtered.map(wf => (
               <WorkflowCard key={wf.id} wf={wf} expanded={expandedId === wf.id}
                 onToggle={() => setExpandedId(expandedId === wf.id ? null : wf.id)}
                 owner={ownerMap[wf.id]} teamMembers={teamMembers} onOwnerChange={refreshOwnership}/>
             ))}
           </div>
-          {visibleCount < filtered.length && (
-            <div style={{ textAlign: 'center', padding: 16 }}>
-              <button className="btn btn-primary" onClick={() => setVisibleCount(v => v + 50)}
-                style={{ fontSize: 13, padding: '8px 24px' }}>
-                Show more ({filtered.length - visibleCount} remaining)
-              </button>
-            </div>
-          )}
           {filtered.length === 0 && (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)', fontSize: 13 }}>No workflows match your filters</div>
           )}
@@ -237,12 +233,6 @@ const WorkflowsPage = () => {
         .wf-status-badge.active { background: #05966914; color: #059669; }
         .wf-status-badge.inactive { background: #f5952514; color: #f59525; }
         .wf-status-badge.archived { background: #6b728014; color: #6b7280; }
-        .wf-status-badge.zombie { background: #f59e0b20; color: #d97706; animation: zombiePulse 2s ease-in-out infinite; }
-        @keyframes zombiePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
-        .wf-zombie { border-color: #d9770640 !important; background: linear-gradient(135deg, var(--surface-1) 0%, #f59e0b08 100%); }
-        .wf-zombie:hover { border-color: #d97706 !important; }
-        .wf-card-link { color: var(--text-primary); text-decoration: none; display: block; }
-        .wf-card-link:hover { color: var(--accent, var(--brand)); text-decoration: underline; }
         .wf-detail { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
         .wf-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-secondary); margin: 12px 0 8px; }
         .wf-node-list { display: flex; flex-direction: column; gap: 6px; }
@@ -348,7 +338,7 @@ const DeveloperStatsPanel = ({ workflows, errors, executions, ownerMap, teamMemb
               </div>
               <div>
                 <div className="dev-name">{ds.member.name}</div>
-                <div className="dev-role">{ds.member.role || 'Developer'} · {ds.member.email || ''}</div>
+                <div className="dev-role">{ds.member.role || 'Developer'} Â· {ds.member.email || ''}</div>
               </div>
             </div>
 
@@ -356,7 +346,7 @@ const DeveloperStatsPanel = ({ workflows, errors, executions, ownerMap, teamMemb
               <div className="dev-metric">
                 <div className="dev-metric-label">Workflows</div>
                 <div className="dev-metric-value">{ds.wfCount}</div>
-                <div className="dev-metric-sub">{ds.activeWfs} active · {ds.inactiveWfs} inactive</div>
+                <div className="dev-metric-sub">{ds.activeWfs} active Â· {ds.inactiveWfs} inactive</div>
               </div>
               <div className="dev-metric">
                 <div className="dev-metric-label">Success Rate</div>
@@ -372,7 +362,7 @@ const DeveloperStatsPanel = ({ workflows, errors, executions, ownerMap, teamMemb
               </div>
               <div className="dev-metric">
                 <div className="dev-metric-label">Avg Resolution</div>
-                <div className="dev-metric-value">{ds.avgResolutionMins > 0 ? formatDuration(ds.avgResolutionMins) : '—'}</div>
+                <div className="dev-metric-value">{ds.avgResolutionMins > 0 ? formatDuration(ds.avgResolutionMins) : 'â'}</div>
                 <div className="dev-metric-sub">{ds.avgResolutionMins > 0 ? 'per error' : 'no data'}</div>
               </div>
             </div>
@@ -440,7 +430,7 @@ const BulkAssignPanel = ({ workflows, ownerMap, teamMembers, onRefresh }) => {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.size} selected</span>
             <select value={bulkOwner} onChange={e => setBulkOwner(e.target.value)} className="ownership-select">
-              <option value="">Assign to…</option>
+              <option value="">Assign toâ¦</option>
               {teamMembers.filter(m => m.is_active).map(m => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
@@ -478,7 +468,7 @@ const BulkAssignPanel = ({ workflows, ownerMap, teamMembers, onRefresh }) => {
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </select>
-                {saving[wf.id] && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginLeft: 6 }}>saving…</span>}
+                {saving[wf.id] && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginLeft: 6 }}>savingâ¦</span>}
               </td>
             </tr>
           ))}
@@ -554,7 +544,7 @@ const TeamMembersPanel = ({ teamMembers, onRefresh }) => {
           </select>
           <button className="btn btn-primary" onClick={addMember} disabled={saving || !name.trim()}
                   style={{ fontSize: 12, padding: '6px 16px' }}>
-            {saving ? 'Adding…' : 'Add Member'}
+            {saving ? 'Addingâ¦' : 'Add Member'}
           </button>
         </div>
       </div>
@@ -578,7 +568,7 @@ const TeamMembersPanel = ({ teamMembers, onRefresh }) => {
               ) : (
                 <>
                   <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{m.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{m.email || 'No email'} · {m.role || 'developer'} · {m.is_active ? 'Active' : 'Inactive'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{m.email || 'No email'} Â· {m.role || 'developer'} Â· {m.is_active ? 'Active' : 'Inactive'}</div>
                 </>
               )}
             </div>
@@ -610,8 +600,7 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
   const conns = meta.connections_used || [];
   const graph = meta.connections_graph || [];
   const url = meta.url || '#';
-  const isZombie = wf.is_active && !wf.is_archived && (wf.total_executions || 0) === 0;
-  const statusLabel = isZombie ? 'zombie' : wf.is_archived ? 'archived' : wf.is_active ? 'active' : 'inactive';
+  const statusLabel = wf.is_archived ? 'archived' : wf.is_active ? 'active' : 'inactive';
   const [assigning, setAssigning] = React.useState(false);
 
   const handleAssign = async (e) => {
@@ -631,18 +620,13 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
   };
 
   return (
-    <div className={`wf-card ${expanded ? 'expanded' : ''} ${isZombie ? 'wf-zombie' : ''}`} onClick={onToggle}>
+    <div className={`wf-card ${expanded ? 'expanded' : ''}`} onClick={onToggle}>
       <div className="wf-card-head">
         <PlatformIcon p={pt} size={34}/>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <a href={url !== '#' ? url : undefined} target="_blank" rel="noopener noreferrer"
-             className="wf-card-title wf-card-link"
-             onClick={e => { if (url !== '#') e.stopPropagation(); else e.preventDefault(); }}
-             title={url !== '#' ? `Open in ${pt === 'n8n' ? 'n8n' : 'Make.com'}` : wf.name}>
-            {wf.name || 'Untitled'}
-          </a>
+          <div className="wf-card-title">{wf.name || 'Untitled'}</div>
           <div className="wf-card-meta">
-            {pt} · {wf.trigger_type || 'manual'} · {wf.node_count || nodes.length} nodes
+            {pt} Â· {wf.trigger_type || 'manual'} Â· {wf.node_count || nodes.length} nodes
           </div>
         </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -680,7 +664,7 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
           const rate = runs > 0 ? ((runs - errs) / runs * 100) : -1;
           const rateClass = rate < 0 ? 'nodata' : rate >= 97 ? 'excellent' : rate >= 90 ? 'good' : 'poor';
           const rateLabel = rate < 0 ? 'N/A' : rate % 1 === 0 ? rate + '%' : rate.toFixed(1) + '%';
-          const rateIcon = rate >= 97 ? '✔' : rate >= 90 ? '⚠' : rate >= 0 ? '✖' : '—';
+          const rateIcon = rate >= 97 ? 'â' : rate >= 90 ? 'â ' : rate >= 0 ? 'â' : 'â';
           return (
             <React.Fragment>
               <span className={`wf-success-rate ${rateClass}`}>{rateIcon} {rateLabel}</span>
@@ -709,7 +693,7 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
           )}
           <a href={url} target="_blank" rel="noopener noreferrer"
              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--accent, var(--brand))', textDecoration: 'none', marginBottom: 12, fontWeight: 600 }}>
-            Open in {pt === 'n8n' ? 'n8n' : 'Make.com'} →
+            Open in {pt === 'n8n' ? 'n8n' : 'Make.com'} â
           </a>
           {conns.length > 0 && (
             <>
@@ -720,7 +704,7 @@ const WorkflowCard = ({ wf, expanded, onToggle, owner, teamMembers, onOwnerChang
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: stringToColor(c.type || '') }}/>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Type: {c.type} · Used in: {(c.usedIn || []).join(', ')}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Type: {c.type} Â· Used in: {(c.usedIn || []).join(', ')}</div>
                     </div>
                   </div>
                 ))}
@@ -774,10 +758,10 @@ const WorkflowFlowDiagram = ({ nodes, graph }) => {
             <div className="wf-node-dot" style={{ background: n.isTrigger ? 'var(--sev-info)' : stringToColor(n.app || 'default') }}/>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span className="wf-node-name">{n.name}</span>
-              <span className="wf-node-type"> · {n.app || 'unknown'}{n.operation ? ` → ${n.operation}` : ''}</span>
+              <span className="wf-node-type"> Â· {n.app || 'unknown'}{n.operation ? ` â ${n.operation}` : ''}</span>
             </div>
           </div>
-          {i < ordered.length - 1 && <div className="wf-flow-arrow">↓</div>}
+          {i < ordered.length - 1 && <div className="wf-flow-arrow">â</div>}
         </React.Fragment>
       ))}
     </div>
