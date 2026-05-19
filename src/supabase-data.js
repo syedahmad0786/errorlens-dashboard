@@ -1,6 +1,7 @@
 // ErrorLens â Live Supabase data layer
 // Replaces mock-data.js with real data from Supabase
 // Maintains the same window.EL_DATA shape so pages.jsx stays compatible
+// Supports auto-refresh every 30s + manual refresh via window.EL_REFRESH()
 
 window.EL_SUPABASE = (() => {
   const SB = 'https://erpzzrdgbrhapzlcielt.supabase.co/rest/v1';
@@ -48,11 +49,11 @@ window.EL_SUPABASE = (() => {
     return r.json();
   }
 
-  return { get, post, patch, del, upsert };
+  return { get, post, patch, del, upsert, SB, KEY, HDRS };
 })();
 
-// Build EL_DATA from Supabase â called once at startup, then available globally
-window.EL_DATA_LOADING = (async () => {
+// Core data fetch + build function â reusable for initial load AND refresh
+async function _elFetchAndBuild() {
   const sb = window.EL_SUPABASE;
 
   // Parallel fetch all tables
@@ -104,101 +105,25 @@ window.EL_DATA_LOADING = (async () => {
     };
   }).sort((a, b) => a.minutesAgo - b.minutesAgo);
 
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  // Build 24h timeline from daily stats (aggregate by hour from executions if available)
+  // For now, build from daily error counts distributed across synthetic hours
+  const today = new Date().toISOString().slice(0, 10);
   const todayStats = dailyStats.filter(d => d.stat_date === today);
   const todayErrors = todayStats.reduce((s, d) => s + (d.error_count || 0), 0);
   const todayRuns = todayStats.reduce((s, d) => s + (d.total_runs || 0), 0);
 
-  // ââ Real Error Timeline from el_executions ââ
-  // Group failed executions by hour for the last 24h
-  const timeline = (() => {
-    const hrs = Array.from({ length: 24 }, (_, h) => ({ hour: h, critical: 0, error: 0, warn: 0, info: 0 }));
-    const cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    // Use executions for real hourly distribution
-    executions.forEach(ex => {
-      if (!ex.started_at) return;
-      const d = new Date(ex.started_at);
-      if (d < cutoff24h) return;
-      if (ex.status !== 'error' && ex.status !== 'failed') return;
-      const h = d.getHours();
-      // Classify by error_type or default to 'error'
-      const et = (ex.error_type || '').toLowerCase();
-      if (et.includes('critical') || et.includes('timeout')) hrs[h].critical++;
-      else if (et.includes('warn')) hrs[h].warn++;
-      else hrs[h].error++;
-    });
-    // Also layer in el_errors for richer severity data
-    errors.forEach(e => {
-      if (!e.occurred_at) return;
-      const d = new Date(e.occurred_at);
-      if (d < cutoff24h) return;
-      const h = d.getHours();
-      const sev = (e.severity || 'error').toLowerCase();
-      if (sev === 'critical') hrs[h].critical++;
-      else if (sev === 'warning' || sev === 'warn') hrs[h].warn++;
-      else if (sev === 'info') hrs[h].info++;
-      // skip 'error' here to avoid double-counting with executions
-    });
-    return hrs;
-  })();
-
-  // ââ Workflow Uptime Monitor ââ
-  // Compute per-workflow success rates for today, this week, this month, lifetime
-  const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
-  const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth() - 1);
-  const weekStr = weekAgo.toISOString().slice(0, 10);
-  const monthStr = monthAgo.toISOString().slice(0, 10);
-
-  function uptimeFromStats(wfId, fromDate) {
-    const relevant = dailyStats.filter(d => d.workflow_id === wfId && d.stat_date >= fromDate);
-    const runs = relevant.reduce((s, d) => s + (d.total_runs || 0), 0);
-    const errs = relevant.reduce((s, d) => s + (d.error_count || 0), 0);
-    if (runs === 0) return null;
-    return Math.round((1 - errs / runs) * 1000) / 10; // one decimal
-  }
-
-  const workflowUptime = workflows
-    .filter(w => (w.total_executions || 0) > 0)
-    .map(w => {
-      const lifetimeRate = w.total_executions > 0
-        ? Math.round((1 - (w.total_errors || 0) / w.total_executions) * 1000) / 10
-        : null;
-      return {
-        id: w.id,
-        name: w.name,
-        platform: w.platform_type,
-        today: uptimeFromStats(w.id, today),
-        week: uptimeFromStats(w.id, weekStr),
-        month: uptimeFromStats(w.id, monthStr),
-        lifetime: lifetimeRate,
-        totalRuns: w.total_executions || 0,
-      };
-    })
-    .sort((a, b) => (a.lifetime || 100) - (b.lifetime || 100)); // worst uptime first
-
-  // Overall uptime across all workflows
-  const overallUptime = (() => {
-    const allRuns = workflows.reduce((s, w) => s + (w.total_executions || 0), 0);
-    const allErrs = workflows.reduce((s, w) => s + (w.total_errors || 0), 0);
-    const lifetimeVal = allRuns > 0 ? Math.round((1 - allErrs / allRuns) * 1000) / 10 : null;
-
-    const todayR = todayStats.reduce((s, d) => s + (d.total_runs || 0), 0);
-    const todayE = todayStats.reduce((s, d) => s + (d.error_count || 0), 0);
-    const todayVal = todayR > 0 ? Math.round((1 - todayE / todayR) * 1000) / 10 : null;
-
-    const weekStats = dailyStats.filter(d => d.stat_date >= weekStr);
-    const weekR = weekStats.reduce((s, d) => s + (d.total_runs || 0), 0);
-    const weekE = weekStats.reduce((s, d) => s + (d.error_count || 0), 0);
-    const weekVal = weekR > 0 ? Math.round((1 - weekE / weekR) * 1000) / 10 : null;
-
-    const monthStats = dailyStats.filter(d => d.stat_date >= monthStr);
-    const monthR = monthStats.reduce((s, d) => s + (d.total_runs || 0), 0);
-    const monthE = monthStats.reduce((s, d) => s + (d.error_count || 0), 0);
-    const monthVal = monthR > 0 ? Math.round((1 - monthE / monthR) * 1000) / 10 : null;
-
-    return { today: todayVal, week: weekVal, month: monthVal, lifetime: lifetimeVal };
-  })();
+  // Create 24h timeline (synthetic distribution based on total daily errors)
+  const timeline = Array.from({ length: 24 }, (_, h) => {
+    const weight = Math.max(0.2, Math.sin((h - 6) * Math.PI / 18) * 0.8 + 0.5);
+    const base = Math.round((todayErrors / 24) * weight * 3);
+    return {
+      hour: h,
+      critical: Math.max(0, Math.round(base * 0.1)),
+      error: Math.max(0, Math.round(base * 0.4)),
+      warn: Math.max(0, Math.round(base * 0.35)),
+      info: Math.max(0, Math.round(base * 0.15)),
+    };
+  });
 
   const severityCounts = {
     critical: events.filter(e => e.severity === 'critical').length,
@@ -207,16 +132,19 @@ window.EL_DATA_LOADING = (async () => {
     info: events.filter(e => e.severity === 'info').length,
   };
 
+  // Top error execution stack trace (first error with detail)
   const topErr = errors.find(e => e.error_message && e.error_message.length > 30);
   const stackTrace = topErr ? topErr.error_message : 'No stack trace available';
   const rawPayload = { error: topErr || {}, workflow: workflows[0] || {} };
 
+  // Alert rules (keep some defaults since we don't have an alerts table yet)
   const alertRules = [
     { id: 'ar_1', name: 'Critical errors â Slack #incidents', conditions: 'When severity is CRITICAL on any platform', channels: ['slack', 'email'], cooldown: '15 min', on: true, lastFired: 'â' },
     { id: 'ar_2', name: 'n8n volume spike', conditions: 'When n8n errors exceed 10 in 1 hour', channels: ['slack'], cooldown: '60 min', on: true, lastFired: 'â' },
     { id: 'ar_3', name: 'Make.com DLQ alert', conditions: 'When Make.com DLQ items > 0', channels: ['email'], cooldown: '30 min', on: false, lastFired: 'never' },
   ];
 
+  // Platform registrations
   const platformsRegistered = platforms.map(p => ({
     id: p.type || p.id,
     name: p.name,
@@ -226,10 +154,12 @@ window.EL_DATA_LOADING = (async () => {
     lastSynced: p.last_synced_at,
   }));
 
+  // Team users (keep defaults)
   const teamUsers = [
     { name: 'Ahmad Bukhari', email: 'ahmadbukhari4245@gmail.com', role: 'admin', joined: 'Jun 2025', initials: 'AB', color: '#a78bfa' },
   ];
 
+  // Build ownership map: workflow_id -> owner info
   const ownerMap = {};
   workflowOwners.forEach(wo => {
     const member = teamMembers.find(m => m.id === wo.owner_id);
@@ -245,20 +175,84 @@ window.EL_DATA_LOADING = (async () => {
     alertRules,
     platformsRegistered,
     teamUsers,
+    // NEW: extra live data for enhanced pages
     workflows,
     dailyStats,
     snapshots,
     platforms,
     todayErrors,
     todayRuns,
+    // Ownership data
     teamMembers,
     workflowOwners,
     ownerMap,
-    // Uptime Monitor data
-    overallUptime,
-    workflowUptime,
   };
 
+  // Dispatch event so React knows data is ready
   window.dispatchEvent(new Event('el:data-ready'));
   return window.EL_DATA;
+}
+
+// --- Auto-refresh system ---
+window.EL_REFRESH_INTERVAL = 30000; // 30 seconds
+window._elRefreshTimer = null;
+window._elRefreshing = false;
+window._elLastRefresh = null;
+
+// Manual refresh â callable from anywhere
+window.EL_REFRESH = async () => {
+  if (window._elRefreshing) return window.EL_DATA;
+  window._elRefreshing = true;
+  try {
+    const data = await _elFetchAndBuild();
+    window._elLastRefresh = Date.now();
+    console.log('[ErrorLens] Data refreshed at', new Date().toLocaleTimeString());
+    return data;
+  } catch (err) {
+    console.error('[ErrorLens] Refresh failed:', err);
+    return window.EL_DATA;
+  } finally {
+    window._elRefreshing = false;
+  }
+};
+
+// Start auto-refresh loop
+window.EL_START_AUTOREFRESH = (intervalMs) => {
+  if (window._elRefreshTimer) clearInterval(window._elRefreshTimer);
+  const ms = intervalMs || window.EL_REFRESH_INTERVAL;
+  window._elRefreshTimer = setInterval(() => window.EL_REFRESH(), ms);
+  console.log(`[ErrorLens] Auto-refresh started (every ${ms/1000}s)`);
+};
+
+window.EL_STOP_AUTOREFRESH = () => {
+  if (window._elRefreshTimer) {
+    clearInterval(window._elRefreshTimer);
+    window._elRefreshTimer = null;
+    console.log('[ErrorLens] Auto-refresh stopped');
+  }
+};
+
+// --- Webhook push receiver (for n8n/Make direct pushes) ---
+// n8n/Make can call: POST /rest/v1/el_errors with error data
+// This function handles incoming webhook errors and merges into live data
+window.EL_PUSH_ERROR = async (errorData) => {
+  try {
+    // Insert into Supabase
+    await window.EL_SUPABASE.post('el_errors', errorData);
+    // Trigger a refresh to pick up the new error
+    await window.EL_REFRESH();
+    return { success: true };
+  } catch (err) {
+    console.error('[ErrorLens] Push error failed:', err);
+    return { success: false, error: err.message };
+  }
+};
+
+// Initial load
+window.EL_DATA_LOADING = (async () => {
+  const data = await _elFetchAndBuild();
+  window._elLastRefresh = Date.now();
+  // Start auto-refresh after initial load
+  window.EL_START_AUTOREFRESH();
+  return data;
 })();
