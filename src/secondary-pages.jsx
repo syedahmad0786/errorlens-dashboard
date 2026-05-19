@@ -1,4 +1,4 @@
-// ErrorLens — secondary pages
+// ErrorLens â secondary pages
 // Use getter so we always get the latest data (mock or live Supabase)
 const _getD2 = () => window.EL_DATA;
 const D2 = new Proxy({}, { get: (_, prop) => _getD2()[prop] });
@@ -11,7 +11,7 @@ const AlertsPage = ({ onOpenSheet }) => {
       <div className="page-head">
         <div>
           <h1 className="page-title">Alert rules</h1>
-          <div className="page-sub">{rules.length} active rules · last fired 23m ago</div>
+          <div className="page-sub">{rules.length} active rules Â· last fired 23m ago</div>
         </div>
         <button className="btn btn-primary" onClick={onOpenSheet}>
           <Icon name="plus" size={14}/> New rule
@@ -86,13 +86,13 @@ const AlertSheet = ({ open, onClose }) => {
             <>
               <div className="field">
                 <label>Rule name</label>
-                <input defaultValue="Critical errors → Slack #incidents"/>
+                <input defaultValue="Critical errors â Slack #incidents"/>
               </div>
               <div className="field">
                 <label>When</label>
                 <select defaultValue="critical">
                   <option value="critical">Severity is CRITICAL</option>
-                  <option>Severity ≥ ERROR</option>
+                  <option>Severity â¥ ERROR</option>
                   <option>Volume exceeds threshold</option>
                 </select>
               </div>
@@ -108,7 +108,7 @@ const AlertSheet = ({ open, onClose }) => {
               </div>
               <div className="field">
                 <label>Workflow filter (optional)</label>
-                <input placeholder="e.g. Stripe, Postgres, …"/>
+                <input placeholder="e.g. Stripe, Postgres, â¦"/>
               </div>
             </>
           )}
@@ -117,7 +117,7 @@ const AlertSheet = ({ open, onClose }) => {
               <div className="field">
                 <label>Channels</label>
                 {[
-                  { id: 'slack', name: 'Slack', sub: '#incidents · workspace: modern-amenities' },
+                  { id: 'slack', name: 'Slack', sub: '#incidents Â· workspace: modern-amenities' },
                   { id: 'email', name: 'Email', sub: 'on-call@modern-amenities.com' },
                   { id: 'pager', name: 'PagerDuty', sub: 'service: ErrorLens-prod' },
                 ].map(c => (
@@ -221,7 +221,7 @@ const IntegrationsPage = () => {
         <div className="platform-card platform-add">
           <Icon name="plus" size={28}/>
           <div style={{ fontSize: 13, fontWeight: 600 }}>Add platform</div>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: -4 }}>n8n · Zapier · Make · Custom HTTP</div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: -4 }}>n8n Â· Zapier Â· Make Â· Custom HTTP</div>
         </div>
       </div>
     </div>
@@ -230,114 +230,97 @@ const IntegrationsPage = () => {
 
 // ============ Users ============
 const UsersPage = () => {
-  const [users, setUsers] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [showInvite, setShowInvite] = React.useState(false);
-  const [invEmail, setInvEmail] = React.useState('');
-  const [invPass, setInvPass] = React.useState('');
-  const [invName, setInvName] = React.useState('');
-  const [invRole, setInvRole] = React.useState('viewer');
-  const [inviting, setInviting] = React.useState(false);
-  const [invError, setInvError] = React.useState('');
-  const [invSuccess, setInvSuccess] = React.useState('');
-  const isAdmin = window.EL_AUTH && window.EL_AUTH.isAdmin();
-
-  const loadUsers = async () => {
-    setLoading(true);
-    try {
-      const list = await window.EL_AUTH.listUsers();
-      setUsers(list || []);
-    } catch(e) { console.error('Failed to load users:', e); }
-    setLoading(false);
-  };
-
-  React.useEffect(() => { loadUsers(); }, []);
-
-  const handleInvite = async (e) => {
-    e.preventDefault();
-    setInvError('');
-    setInvSuccess('');
-    setInviting(true);
-    try {
-      // Create user via signup
-      const result = await window.EL_AUTH.signUp(invEmail, invPass, { display_name: invName, role: invRole });
-      const userId = result.id || (result.user && result.user.id);
-      if (!userId) throw new Error('Failed to create user');
-      // Create profile
-      const SB_URL = 'https://erpzzrdgbrhapzlcielt.supabase.co/rest/v1';
-      const ANON_KEY = 'sb_publishable_r5FDMEL2kufqPFtAjj9HKA_0tPJXC_4';
-      const token = window.EL_AUTH.token();
-      await fetch(SB_URL + '/el_profiles', {
-        method: 'POST',
-        headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify({ id: userId, email: invEmail, display_name: invName, role: invRole, created_at: new Date().toISOString() }),
-      });
-      setInvSuccess('User ' + invEmail + ' created successfully!');
-      setInvEmail(''); setInvPass(''); setInvName(''); setInvRole('viewer');
-      loadUsers();
-    } catch(err) {
-      setInvError(err.message);
-    }
-    setInviting(false);
-  };
-
-  const roleColors = { admin: '#a78bfa', manager: '#38bdf8', viewer: '#6ee7b7' };
-  const getInitials = (name) => name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) : '??';
-
   return (
     <div className="content">
       <div className="page-head">
         <div>
           <h1 className="page-title">Users</h1>
-          <div className="page-sub">{users.length} members{loading ? ' (loading...)' : ''}</div>
+          <div className="page-sub">{D2.teamUsers.length} members Â· 1 admin Â· 2 managers</div>
         </div>
-        {isAdmin && <button className="btn btn-primary" onClick={() => setShowInvite(!showInvite)}><Icon name="plus" size={14}/> Add user</button>}
+        <button className="btn btn-primary"><Icon name="plus" size={14}/> Invite user</button>
       </div>
 
-      {showInvite && isAdmin && (
-        <div className="card" style={{ maxWidth: 520, marginBottom: 20 }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 600 }}>Create new user</h3>
-          {invError && <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{invError}</div>}
-          {invSuccess && <div style={{ padding: '8px 12px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, color: '#22c55e', fontSize: 13, marginBottom: 12 }}>{invSuccess}</div>}
-          <form onSubmit={handleInvite} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div className="field"><label>Display name</label><input value={invName} onChange={e => setInvName(e.target.value)} required placeholder="John Doe"/></div>
-            <div className="field"><label>Email</label><input type="email" value={invEmail} onChange={e => setInvEmail(e.target.value)} required placeholder="john@company.com"/></div>
-            <div className="field"><label>Password</label><input type="password" value={invPass} onChange={e => setInvPass(e.target.value)} required placeholder="Min 6 characters" minLength={6}/></div>
-            <div className="field"><label>Role</label>
-              <select value={invRole} onChange={e => setInvRole(e.target.value)} style={{ height: 36, background: 'var(--card-hover)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', padding: '0 10px' }}>
-                <option value="viewer">Viewer</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={inviting} style={{ alignSelf: 'flex-start' }}>
-              {inviting ? 'Creating...' : 'Create user'}
-            </button>
-          </form>
-        </div>
-      )}
-
       <div className="users-grid">
-        {users.map(u => (
-          <div key={u.id} className={'user-card ' + (u.role === 'admin' ? 'admin' : '')}>
-            <div className="user-avatar" style={{ background: roleColors[u.role] || '#888' }}>{getInitials(u.display_name)}</div>
+        {D2.teamUsers.map(u => (
+          <div key={u.email} className={`user-card ${u.role === 'admin' ? 'admin' : ''}`}>
+            <div className="user-avatar" style={{ background: u.color }}>{u.initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="user-name">{u.display_name || u.email}</div>
+              <div className="user-name">{u.name}</div>
               <div className="user-email">{u.email}</div>
               <div className="user-role-row">
-                <span className={'role-badge role-' + u.role}>{u.role}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>\u00b7 joined {u.created_at ? new Date(u.created_at).toLocaleDateString('en-US', {month:'short',year:'numeric'}) : 'unknown'}</span>
+                <span className={`role-badge role-${u.role}`}>{u.role}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Â· joined {u.joined}</span>
               </div>
             </div>
           </div>
         ))}
-        {!loading && users.length === 0 && <div style={{ color: 'var(--text-tertiary)', fontSize: 13, padding: 20 }}>No users found. Click "Add user" to create the first one.</div>}
       </div>
     </div>
   );
 };
 
 // ============ Billing ============
+const BillingPage = () => {
+  const [billed, setBilled] = useState('annual');
+  const used = 18742, limit = 50000;
+  const tiers = [
+    { name: 'Starter', price: 0, period: 'forever', feats: ['10K events / month', '7-day retention', '2 platforms', '1 alert rule', 'Community support'], cta: 'Current plan', current: true },
+    { name: 'Pro', price: billed === 'annual' ? 49 : 59, period: 'per month', feats: ['100K events / month', '30-day retention', 'Unlimited platforms', 'Unlimited alert rules', 'Slack + PagerDuty', 'Email support'], cta: 'Upgrade to Pro', featured: true },
+    { name: 'Enterprise', price: 'Custom', period: '', feats: ['Unlimited events', '1-year retention', 'SAML SSO', 'Audit log', 'Dedicated support', '99.99% SLA'], cta: 'Contact sales' },
+  ];
+  return (
+    <div className="content">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Billing</h1>
+          <div className="page-sub">You're on the Starter plan Â· Upgrade for unlimited platforms</div>
+        </div>
+      </div>
+
+      <div className="plan-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <div>
+            <div className="card-title">Current plan</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>Starter</div>
+          </div>
+          <button className="btn btn-ghost">Manage plan</button>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+          <span><strong style={{ color: 'var(--text-primary)' }}>{used.toLocaleString()}</strong> / {limit.toLocaleString()} events</span>
+          <span>14 days left in cycle</span>
+        </div>
+        <div className="usage-bar"><div className="usage-fill" style={{ width: `${used/limit*100}%` }}/></div>
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{Math.round(used/limit*100)}% used Â· resets May 11</div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Plans</h2>
+        <div className="seg">
+          <button className={billed==='monthly'?'on':''} onClick={()=>setBilled('monthly')}>Monthly</button>
+          <button className={billed==='annual'?'on':''} onClick={()=>setBilled('annual')}>Annual Â· save 20%</button>
+        </div>
+      </div>
+
+      <div className="pricing-grid">
+        {tiers.map(t => (
+          <div key={t.name} className={`pricing-card ${t.featured ? 'featured' : ''}`}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t.name}</div>
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <span className="price">{typeof t.price === 'number' ? `$${t.price}` : t.price}</span>
+              <span className="price-period">{t.period}</span>
+            </div>
+            <ul className="feature-list">
+              {t.feats.map((f, i) => (
+                <li key={i}><Icon name="check" size={14} className="check" strokeWidth={2.5}/>{f}</li>
+              ))}
+            </ul>
+            <button className={`btn btn-lg ${t.featured ? 'btn-primary' : 'btn-ghost'}`} disabled={t.current} style={{ width: '100%', justifyContent: 'center' }}>{t.cta}</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // ============ Settings ============
 const SettingsPage = () => {
@@ -347,7 +330,7 @@ const SettingsPage = () => {
       <div className="page-head">
         <div>
           <h1 className="page-title">Settings</h1>
-          <div className="page-sub">Organization preferences · webhooks · danger zone</div>
+          <div className="page-sub">Organization preferences Â· webhooks Â· danger zone</div>
         </div>
       </div>
 
@@ -382,7 +365,7 @@ const SettingsPage = () => {
           <div className="field">
             <label>Slack webhook URL</label>
             <div style={{ display: 'flex', gap: 8 }}>
-              <input style={{ flex: 1 }} defaultValue="https://hooks.slack.com/services/T0…/B0…/xxxx"/>
+              <input style={{ flex: 1 }} defaultValue="https://hooks.slack.com/services/T0â¦/B0â¦/xxxx"/>
               <button className="btn btn-ghost">Send test</button>
             </div>
           </div>
@@ -419,17 +402,20 @@ const LoginPage = ({ onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!email || !password) { setError('Please enter email and password'); return; }
     setError('');
     setLoading(true);
     try {
       await window.EL_AUTH.signIn(email, password);
       onLogin();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleKeyDown = (e) => { if (e.key === 'Enter') handleSubmit(e); };
 
   return (
     <div className="login-wrap">
@@ -453,7 +439,7 @@ const LoginPage = ({ onLogin }) => {
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', gap: 24, fontSize: 11, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: 600 }}>
             <span>10,000+ workflows monitored</span>
-            <span>\u00b7</span>
+            <span>Â·</span>
             <span>SOC 2 type II</span>
           </div>
         </div>
@@ -461,36 +447,34 @@ const LoginPage = ({ onLogin }) => {
       <div className="login-right">
         <div className="login-card">
           <h2 style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Sign in to ErrorLens</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 6 }}>Welcome back. Enter your credentials.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 6 }}>Welcome back. Pick up where you left off.</p>
 
           {error && (
-            <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, marginTop: 12 }}>
+            <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171', fontSize: 13 }}>
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 20 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
             <div className="field">
               <label>Email</label>
-              <input type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} required style={{ height: 44 }}/>
+              <input type="email" placeholder="you@company.com" style={{ height: 44 }}
+                     value={email} onChange={e => setEmail(e.target.value)} onKeyDown={handleKeyDown} autoFocus/>
             </div>
             <div className="field">
               <label>Password</label>
-              <input type="password" placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} required style={{ height: 44 }}/>
+              <input type="password" placeholder="Enter your password" style={{ height: 44 }}
+                     value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleKeyDown}/>
             </div>
             <button type="submit" className="btn btn-primary btn-lg" disabled={loading}
-              style={{ width: '100%', justifyContent: 'center', opacity: loading ? 0.7 : 1 }}>
+                    style={{ width: '100%', justifyContent: 'center', marginTop: 4, opacity: loading ? 0.7 : 1 }}>
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
-
-          <div style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
-            Contact your admin if you need an account.
-          </div>
         </div>
       </div>
     </div>
   );
 };
 
-Object.assign(window, { AlertsPage, AlertSheet, IntegrationsPage, UsersPage, SettingsPage, LoginPage });
+Object.assign(window, { AlertsPage, AlertSheet, IntegrationsPage, UsersPage, BillingPage, SettingsPage, LoginPage });
