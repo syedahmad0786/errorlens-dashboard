@@ -1,4 +1,4 @@
-// ErrorLens — Live Supabase data layer
+// ErrorLens â Live Supabase data layer
 // Replaces mock-data.js with real data from Supabase
 // Maintains the same window.EL_DATA shape so pages.jsx stays compatible
 
@@ -51,7 +51,7 @@ window.EL_SUPABASE = (() => {
   return { get, post, patch, del, upsert };
 })();
 
-// Build EL_DATA from Supabase — called once at startup, then available globally
+// Build EL_DATA from Supabase â called once at startup, then available globally
 window.EL_DATA_LOADING = (async () => {
   const sb = window.EL_SUPABASE;
 
@@ -104,22 +104,101 @@ window.EL_DATA_LOADING = (async () => {
     };
   }).sort((a, b) => a.minutesAgo - b.minutesAgo);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
   const todayStats = dailyStats.filter(d => d.stat_date === today);
   const todayErrors = todayStats.reduce((s, d) => s + (d.error_count || 0), 0);
   const todayRuns = todayStats.reduce((s, d) => s + (d.total_runs || 0), 0);
 
-  const timeline = Array.from({ length: 24 }, (_, h) => {
-    const weight = Math.max(0.2, Math.sin((h - 6) * Math.PI / 18) * 0.8 + 0.5);
-    const base = Math.round((todayErrors / 24) * weight * 3);
-    return {
-      hour: h,
-      critical: Math.max(0, Math.round(base * 0.1)),
-      error: Math.max(0, Math.round(base * 0.4)),
-      warn: Math.max(0, Math.round(base * 0.35)),
-      info: Math.max(0, Math.round(base * 0.15)),
-    };
-  });
+  // ââ Real Error Timeline from el_executions ââ
+  // Group failed executions by hour for the last 24h
+  const timeline = (() => {
+    const hrs = Array.from({ length: 24 }, (_, h) => ({ hour: h, critical: 0, error: 0, warn: 0, info: 0 }));
+    const cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    // Use executions for real hourly distribution
+    executions.forEach(ex => {
+      if (!ex.started_at) return;
+      const d = new Date(ex.started_at);
+      if (d < cutoff24h) return;
+      if (ex.status !== 'error' && ex.status !== 'failed') return;
+      const h = d.getHours();
+      // Classify by error_type or default to 'error'
+      const et = (ex.error_type || '').toLowerCase();
+      if (et.includes('critical') || et.includes('timeout')) hrs[h].critical++;
+      else if (et.includes('warn')) hrs[h].warn++;
+      else hrs[h].error++;
+    });
+    // Also layer in el_errors for richer severity data
+    errors.forEach(e => {
+      if (!e.occurred_at) return;
+      const d = new Date(e.occurred_at);
+      if (d < cutoff24h) return;
+      const h = d.getHours();
+      const sev = (e.severity || 'error').toLowerCase();
+      if (sev === 'critical') hrs[h].critical++;
+      else if (sev === 'warning' || sev === 'warn') hrs[h].warn++;
+      else if (sev === 'info') hrs[h].info++;
+      // skip 'error' here to avoid double-counting with executions
+    });
+    return hrs;
+  })();
+
+  // ââ Workflow Uptime Monitor ââ
+  // Compute per-workflow success rates for today, this week, this month, lifetime
+  const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const weekStr = weekAgo.toISOString().slice(0, 10);
+  const monthStr = monthAgo.toISOString().slice(0, 10);
+
+  function uptimeFromStats(wfId, fromDate) {
+    const relevant = dailyStats.filter(d => d.workflow_id === wfId && d.stat_date >= fromDate);
+    const runs = relevant.reduce((s, d) => s + (d.total_runs || 0), 0);
+    const errs = relevant.reduce((s, d) => s + (d.error_count || 0), 0);
+    if (runs === 0) return null;
+    return Math.round((1 - errs / runs) * 1000) / 10; // one decimal
+  }
+
+  const workflowUptime = workflows
+    .filter(w => (w.total_executions || 0) > 0)
+    .map(w => {
+      const lifetimeRate = w.total_executions > 0
+        ? Math.round((1 - (w.total_errors || 0) / w.total_executions) * 1000) / 10
+        : null;
+      return {
+        id: w.id,
+        name: w.name,
+        platform: w.platform_type,
+        today: uptimeFromStats(w.id, today),
+        week: uptimeFromStats(w.id, weekStr),
+        month: uptimeFromStats(w.id, monthStr),
+        lifetime: lifetimeRate,
+        totalRuns: w.total_executions || 0,
+      };
+    })
+    .sort((a, b) => (a.lifetime || 100) - (b.lifetime || 100)); // worst uptime first
+
+  // Overall uptime across all workflows
+  const overallUptime = (() => {
+    const allRuns = workflows.reduce((s, w) => s + (w.total_executions || 0), 0);
+    const allErrs = workflows.reduce((s, w) => s + (w.total_errors || 0), 0);
+    const lifetimeVal = allRuns > 0 ? Math.round((1 - allErrs / allRuns) * 1000) / 10 : null;
+
+    const todayR = todayStats.reduce((s, d) => s + (d.total_runs || 0), 0);
+    const todayE = todayStats.reduce((s, d) => s + (d.error_count || 0), 0);
+    const todayVal = todayR > 0 ? Math.round((1 - todayE / todayR) * 1000) / 10 : null;
+
+    const weekStats = dailyStats.filter(d => d.stat_date >= weekStr);
+    const weekR = weekStats.reduce((s, d) => s + (d.total_runs || 0), 0);
+    const weekE = weekStats.reduce((s, d) => s + (d.error_count || 0), 0);
+    const weekVal = weekR > 0 ? Math.round((1 - weekE / weekR) * 1000) / 10 : null;
+
+    const monthStats = dailyStats.filter(d => d.stat_date >= monthStr);
+    const monthR = monthStats.reduce((s, d) => s + (d.total_runs || 0), 0);
+    const monthE = monthStats.reduce((s, d) => s + (d.error_count || 0), 0);
+    const monthVal = monthR > 0 ? Math.round((1 - monthE / monthR) * 1000) / 10 : null;
+
+    return { today: todayVal, week: weekVal, month: monthVal, lifetime: lifetimeVal };
+  })();
 
   const severityCounts = {
     critical: events.filter(e => e.severity === 'critical').length,
@@ -133,8 +212,8 @@ window.EL_DATA_LOADING = (async () => {
   const rawPayload = { error: topErr || {}, workflow: workflows[0] || {} };
 
   const alertRules = [
-    { id: 'ar_1', name: 'Critical errors → Slack #incidents', conditions: 'When severity is CRITICAL on any platform', channels: ['slack', 'email'], cooldown: '15 min', on: true, lastFired: '—' },
-    { id: 'ar_2', name: 'n8n volume spike', conditions: 'When n8n errors exceed 10 in 1 hour', channels: ['slack'], cooldown: '60 min', on: true, lastFired: '—' },
+    { id: 'ar_1', name: 'Critical errors â Slack #incidents', conditions: 'When severity is CRITICAL on any platform', channels: ['slack', 'email'], cooldown: '15 min', on: true, lastFired: 'â' },
+    { id: 'ar_2', name: 'n8n volume spike', conditions: 'When n8n errors exceed 10 in 1 hour', channels: ['slack'], cooldown: '60 min', on: true, lastFired: 'â' },
     { id: 'ar_3', name: 'Make.com DLQ alert', conditions: 'When Make.com DLQ items > 0', channels: ['email'], cooldown: '30 min', on: false, lastFired: 'never' },
   ];
 
@@ -143,7 +222,7 @@ window.EL_DATA_LOADING = (async () => {
     name: p.name,
     status: p.is_connected ? 'active' : 'error',
     events: errors.filter(e => e.platform_type === p.type).length,
-    webhook: `${p.base_url || '—'}`,
+    webhook: `${p.base_url || 'â'}`,
     lastSynced: p.last_synced_at,
   }));
 
@@ -175,6 +254,9 @@ window.EL_DATA_LOADING = (async () => {
     teamMembers,
     workflowOwners,
     ownerMap,
+    // Uptime Monitor data
+    overallUptime,
+    workflowUptime,
   };
 
   window.dispatchEvent(new Event('el:data-ready'));
