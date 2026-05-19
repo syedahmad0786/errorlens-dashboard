@@ -41,10 +41,8 @@ function dayISO(d) {
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  // Allow GET (for GitHub Actions schedule) and POST (manual)
   if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
 
-  // Auth: header OR query param
   const provided = req.headers['x-cron-secret'] || req.query?.secret;
   if (provided !== CRON_SECRET) return res.status(401).json({ error: 'Invalid cron secret' });
 
@@ -53,13 +51,11 @@ module.exports = async (req, res) => {
   const startedAt = Date.now();
 
   try {
-    // Pull raw error + execution data
     const [errors, executions] = await Promise.all([
       fetchAll('el_errors', `select=workflow_id,platform_type,occurred_at,is_resolved&occurred_at=gte.${since}&limit=20000`),
       fetchAll('el_executions', `select=workflow_id,platform_type,status,started_at,duration_ms&started_at=gte.${since}&limit=20000`),
     ]);
 
-    // Group by (workflow_id, stat_date, platform_type)
     const buckets = new Map();
     const k = (wf, d, p) => `${wf}|${d}|${p}`;
 
@@ -80,7 +76,6 @@ module.exports = async (req, res) => {
       buckets.set(key, b);
     }
 
-    // Compute avg_duration_ms and shape rows
     const rows = Array.from(buckets.values()).map(b => ({
       workflow_id: b.workflow_id,
       stat_date: b.stat_date,
@@ -89,34 +84,14 @@ module.exports = async (req, res) => {
       total_runs: b.total_runs,
       success_count: b.success_count,
       avg_duration_ms: b.total_runs > 0 ? Math.round(b.total_duration_ms / b.total_runs) : null,
-      updated_at: new Date().toISOString(),
     }));
 
-    // Upsert in batches of 500
     let inserted = 0;
     for (let i = 0; i < rows.length; i += 500) {
       const slice = rows.slice(i, i + 500);
       await upsertRows('el_daily_stats', slice);
       inserted += slice.length;
     }
-
-    // Also write a sync-run marker
-    await fetch(`${SB_URL}/el_platform_snapshots`, {
-      method: 'POST',
-      headers: {
-        apikey: SB_KEY,
-        Authorization: `Bearer ${SB_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates,return=minimal',
-      },
-      body: JSON.stringify({
-        platform_type: 'errorlens',
-        snapshot_date: dayISO(Date.now()),
-        total_workflows: new Set(rows.map(r => r.workflow_id)).size,
-        active_workflows: new Set(rows.filter(r => r.total_runs > 0).map(r => r.workflow_id)).size,
-        error_count: rows.reduce((s, r) => s + r.error_count, 0),
-      }),
-    }).catch(() => {});
 
     return res.status(200).json({
       success: true,
