@@ -3,7 +3,7 @@
   "outputDirectory": ".",
   "framework": null,
   "functions": {
-    "api/webhook.js": {
+    "api/*.js": {
       "memory": 256,
       "maxDuration": 30
     }
