@@ -1,4 +1,4 @@
-// ErrorLens — main app (auth-gated)
+// ErrorLens â main app (auth-gated)
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "theme": "ma",
   "accent": "gold",
@@ -37,7 +37,6 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
   const tweaksObj = { ...tweaks, set: (k, v) => setTweak(k, v) };
 
   const goEvent = (e) => { setOpenEvent(e); setRoute('event'); };
-  const goWorkflow = (wfId) => { setRoute('workflows'); };
 
   const handleLogin = () => {
     setUser(window.EL_AUTH.profile());
@@ -102,7 +101,7 @@ function ErrorLensApp({ initialRoute = 'overview', forceTheme }) {
                    user={user} onLogout={handleLogout}/>
           <div className="main">
             <Topbar crumbs={crumbs}/>
-            {route === 'overview'    && <OverviewPage tweaks={tweaksObj} onOpenEvent={goEvent} onNav={setRoute} onOpenWorkflow={goWorkflow}/>}
+            {route === 'overview'    && <OverviewPage tweaks={tweaksObj} onOpenEvent={goEvent} onNav={setRoute}/>}
             {route === 'workflows'   && <WorkflowsPage/>}
             {route === 'events'      && <FeedPage onOpenEvent={goEvent}/>}
             {route === 'event'       && <EventDetailPage event={openEvent || window.EL_DATA.events[0]} onBack={() => setRoute('events')}/>}
